@@ -1,4 +1,4 @@
-import mysql, {
+﻿import mysql, {
   type Pool,
   type PoolConnection,
   type ResultSetHeader,
@@ -47,7 +47,7 @@ function databaseConfig() {
     const database = decodeURIComponent(parsed.pathname.replace(/^\/+/, ""));
     if (!parsed.hostname || !parsed.username || !database) {
       throw new Error(
-        "DATABASE_URL inválida. Use mysql://usuario:senha@host:3306/banco.",
+        "DATABASE_URL invÃ¡lida. Use mysql://usuario:senha@host:3306/banco.",
       );
     }
     return {
@@ -65,7 +65,7 @@ function databaseConfig() {
   const database = process.env.DB_NAME?.trim();
   if (!host || !user || !database) {
     throw new Error(
-      "Banco SQL não configurado. Defina DATABASE_URL ou DB_HOST, DB_PORT, DB_USER, DB_PASSWORD e DB_NAME.",
+      "Banco SQL nÃ£o configurado. Defina DATABASE_URL ou DB_HOST, DB_PORT, DB_USER, DB_PASSWORD e DB_NAME.",
     );
   }
 
@@ -88,11 +88,37 @@ export function getSqlPool(): Pool {
   return pool;
 }
 
-function normalizeParameter(value: unknown): unknown {
+type SqlBindValue =
+  | string
+  | number
+  | bigint
+  | boolean
+  | Date
+  | null
+  | Buffer
+  | Uint8Array;
+
+function normalizeParameter(value: unknown): SqlBindValue {
+  if (value === null || value === undefined) return null;
+  if (value instanceof Date) return value;
+  if (Buffer.isBuffer(value)) return value;
+  if (value instanceof Uint8Array) return value;
+
+  if (
+    typeof value === "number" ||
+    typeof value === "bigint" ||
+    typeof value === "boolean"
+  ) {
+    return value;
+  }
+
+  if (typeof value == "string") {
+    return JSON.stringify(value);
+  }
   if (typeof value !== "string") return value;
 
-  // MySQL/MariaDB DATETIME aceita "YYYY-MM-DD HH:mm:ss". Os formulários do
-  // projeto utilizam ISO/datetime-local, então normalizamos sem alterar textos comuns.
+  // MySQL/MariaDB DATETIME aceita "YYYY-MM-DD HH:mm:ss". Os formulÃ¡rios do
+  // projeto utilizam ISO/datetime-local, entÃ£o normalizamos sem alterar textos comuns.
   const localDateTime = value.match(
     /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::(\d{2}))?$/,
   );
@@ -126,7 +152,7 @@ async function executeOn<T = SqlRow>(
   query: string,
   params: unknown[],
 ): Promise<SqlResult<T>> {
-  const values = params.map(normalizeParameter);
+  const values: SqlBindValue[] = params.map(normalizeParameter);
   const [raw] = await executor.execute(query, values);
 
   if (Array.isArray(raw)) {
@@ -215,3 +241,4 @@ export function sqlDatabase() {
   compat ??= new SqlDatabaseCompat();
   return compat;
 }
+
