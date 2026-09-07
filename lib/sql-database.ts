@@ -98,18 +98,12 @@ type SqlBindValue =
 
 function normalizeParameter(value: unknown): SqlBindValue {
   if (value === null || value === undefined) return null;
-
   if (value instanceof Date) return value;
   if (Buffer.isBuffer(value)) return value;
   if (value instanceof Uint8Array) return Buffer.from(value);
 
-  if (typeof value === "number" || typeof value === "boolean") {
-    return value;
-  }
-
-  if (typeof value === "bigint") {
-    return value.toString();
-  }
+  if (typeof value === "number" || typeof value === "boolean") return value;
+  if (typeof value === "bigint") return value.toString();
 
   if (typeof value === "string") {
     const localDateTime = value.match(
@@ -123,15 +117,11 @@ function normalizeParameter(value: unknown): SqlBindValue {
       const parsed = new Date(value);
       if (Number.isNaN(parsed.getTime())) return parsed;
     }
-
     return value;
   }
 
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return String(value);
-  }
+  try { return JSON.stringify(value); }
+  catch { return String(value); }
 }
 function normalizeValue(value: unknown): unknown {
   if (value instanceof Date) return value.toISOString();
@@ -240,5 +230,6 @@ export function sqlDatabase() {
   compat ??= new SqlDatabaseCompat();
   return compat;
 }
+
 
 
