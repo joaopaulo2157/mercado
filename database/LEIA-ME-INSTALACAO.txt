@@ -1,0 +1,67 @@
+SUPERMERCADO CENTRAL - BANCO SQL PORTAVEL (MYSQL/MARIADB)
+=======================================================
+
+ARQUIVO PARA IMPORTAR
+---------------------
+database/supermercado_central.sql
+
+O SQL cria 23 tabelas, indices e os dados iniciais do projeto.
+Nao existe CREATE DATABASE no arquivo: selecione primeiro o banco criado na
+hospedagem e depois faça a importacao. Isso aumenta a compatibilidade com cPanel,
+Plesk e hospedagens compartilhadas.
+
+INSTALACAO RAPIDA
+-----------------
+1. No painel da hospedagem, crie:
+   - um banco MySQL/MariaDB;
+   - um usuario do banco;
+   - associe o usuario ao banco com os privilegios necessarios.
+
+2. Abra o phpMyAdmin, selecione o banco criado e importe:
+   database/supermercado_central.sql
+
+3. Copie .env.example para .env.local no desenvolvimento ou cadastre as
+   variaveis no painel da hospedagem:
+   DB_HOST
+   DB_PORT
+   DB_USER
+   DB_PASSWORD
+   DB_NAME
+
+4. Alternativamente, use apenas:
+   DATABASE_URL=mysql://usuario:senha@host:3306/banco
+
+5. Se o banco exigir SSL:
+   DB_SSL=true
+   DB_SSL_REJECT_UNAUTHORIZED=true
+
+6. Configure o painel administrativo:
+   AUTH_MODE=local
+   ADMIN_EMAILS=admin@seudominio.com
+   ADMIN_PASSWORD=uma-senha-forte
+   ADMIN_SESSION_SECRET=um-segredo-longo-e-aleatorio
+
+7. Na hospedagem Node.js:
+   npm install
+   npm run build
+   npm start
+
+IMPORTANTE
+---------
+- O banco nao depende mais do Cloudflare D1.
+- Imagens enviadas pelo painel agora ficam na tabela media_files.
+- Backups do catalogo ficam na tabela catalog_backups.
+- Quantidades de estoque usam DECIMAL(12,3), inclusive para venda por peso.
+- O projeto principal agora roda em Next.js/Node.js.
+- O banco pode ficar em praticamente qualquer hospedagem que ofereca
+  MySQL/MariaDB. A hospedagem da aplicacao precisa suportar Node.js e permitir
+  conexao com esse banco.
+- Se banco e aplicacao estiverem em servidores diferentes, autorize o IP/host
+  da aplicacao no acesso remoto do MySQL.
+
+DADOS ANTIGOS DO D1
+-------------------
+Este SQL contem a estrutura e os dados iniciais que existiam no projeto enviado.
+Se houver um banco D1 remoto em producao com pedidos/clientes/estoque mais novos,
+esses dados precisam ser exportados do D1 e migrados separadamente antes de
+encerrar o banco antigo.

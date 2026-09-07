@@ -1,0 +1,24 @@
+SC SUPERMERCADO CENTRAL - CORRECAO VERCEL V3
+=============================================
+
+Correcoes desta versao:
+
+1. Build principal fixado em Next.js:
+   package.json -> "build": "next build"
+
+2. vercel.json força:
+   framework = nextjs
+   buildCommand = next build
+
+   Isso sobrepoe configuracoes antigas de Build Command do projeto Vercel.
+
+3. Node.js fixado em 22.x no package.json.
+   Evita upgrade automatico para majors futuros durante o build.
+
+4. .vercelignore exclui o ambiente legado Cloudflare/Sites do upload Vercel,
+   mas os arquivos continuam preservados dentro do projeto.
+
+5. scripts/build-verified.sh foi criado como camada defensiva. Se alguma
+   configuracao antiga ainda tentar chama-lo, ele apenas executa Next.js.
+
+6. A correcao anterior de app/media/[...key]/route.ts continua presente.

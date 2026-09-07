@@ -1,0 +1,151 @@
+/* V15 — eixo central consistente, grades equilibradas e respiro responsivo */
+:root {
+  --content-max: var(--container, 1400px);
+  --content-gutter: clamp(24px, 4vw, 56px);
+}
+
+/* Mantém a navegação no mesmo eixo visual do conteúdo principal. */
+.header {
+  padding-inline: max(24px, calc((100vw - var(--content-max)) / 2));
+}
+
+/* Todos os blocos comerciais passam a compartilhar o mesmo centro. */
+.hero,
+.benefits,
+.departments,
+.shop-section,
+.flash-offers,
+.motion-showcase,
+.recommendations,
+.reviews-section,
+.recent-section,
+.store-location {
+  box-sizing: border-box;
+  width: min(100%, var(--content-max));
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.hero {
+  max-width: var(--content-max);
+}
+
+/* Banners largos recebem o mesmo limite, com respiro lateral previsível. */
+.combo-banner,
+.whatsapp-section {
+  box-sizing: border-box;
+  width: min(calc(100% - 48px), var(--content-max));
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.combo-banner {
+  margin-top: 50px;
+}
+
+.whatsapp-section {
+  margin-top: 30px;
+  border-radius: 32px;
+  box-shadow: 0 26px 70px rgba(5, 40, 111, 0.16);
+}
+
+/* Centraliza também a última linha quando o filtro retorna poucos produtos. */
+.products-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: center;
+  gap: 21px;
+}
+
+.products-grid > .product-card {
+  flex: 0 1 calc((100% - 63px) / 4);
+  min-width: 0;
+}
+
+/* Trilhas com poucos itens ficam equilibradas sem perder a rolagem no celular. */
+@media (min-width: 761px) {
+  .recommendation-track {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .recommendation-track > article {
+    flex: 0 1 calc((100% - 40px) / 5);
+    min-width: 0;
+  }
+
+  .recent-track {
+    flex-wrap: wrap;
+    justify-content: center;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 1180px) {
+  .products-grid > .product-card {
+    flex-basis: calc((100% - 42px) / 3);
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1100px) {
+  .recommendation-track > article {
+    flex-basis: calc((100% - 20px) / 3);
+  }
+}
+
+@media (max-width: 900px) {
+  .header {
+    padding-inline: 18px;
+  }
+}
+
+@media (max-width: 720px) {
+  :root {
+    --content-gutter: 15px;
+  }
+
+  .products-grid {
+    gap: 11px;
+  }
+
+  .products-grid > .product-card {
+    flex-basis: calc((100% - 11px) / 2);
+  }
+
+  .combo-banner,
+  .whatsapp-section {
+    width: calc(100% - 30px);
+  }
+
+  .combo-banner {
+    margin-top: 30px;
+  }
+
+  .whatsapp-section {
+    border-radius: 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .header {
+    padding-inline: 15px;
+  }
+
+  .hero {
+    width: 100%;
+  }
+
+  .departments,
+  .shop-section,
+  .flash-offers,
+  .motion-showcase,
+  .recommendations,
+  .reviews-section,
+  .recent-section,
+  .store-location {
+    margin-right: auto;
+    margin-left: auto;
+  }
+}

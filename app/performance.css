@@ -1,0 +1,4 @@
+.product-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 280px 390px;
+}

@@ -1,0 +1,34 @@
+SUPERMERCADO CENTRAL - MIGRACAO SQL CONCLUIDA
+=============================================
+
+Banco principal: MySQL/MariaDB
+Arquivo de instalacao: database/supermercado_central.sql
+Tabelas: 23
+Driver Node.js: mysql2/promise
+Runtime principal: Next.js / Node.js
+
+ALTERACOES PRINCIPAIS
+---------------------
+- Cloudflare D1/SQLite removido do fluxo principal.
+- Consultas adaptadas para MySQL/MariaDB.
+- Pool de conexoes SQL em lib/sql-database.ts.
+- Imagens do painel armazenadas na tabela media_files.
+- Backups do catalogo armazenados na tabela catalog_backups.
+- Estoque fracionado preservado com DECIMAL(12,3).
+- Login administrativo local por sessao assinada.
+- Antigos arquivos Cloudflare/D1 preservados apenas em legacy/.
+
+ANTES DE PUBLICAR
+-----------------
+1. Importe database/supermercado_central.sql no banco da hospedagem.
+2. Configure as variaveis do .env.example.
+3. Troque ADMIN_PASSWORD e ADMIN_SESSION_SECRET por valores fortes.
+4. Execute npm install.
+5. Execute npm run build.
+6. Inicie a aplicacao com npm start ou pelo painel Node.js do provedor.
+
+OBSERVACAO
+----------
+Se existir um D1 remoto com dados reais mais novos, exporte esses registros e
+migre-os separadamente. O ZIP enviado nao continha uma copia fisica do banco D1
+remoto.

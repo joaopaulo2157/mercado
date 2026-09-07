@@ -1,0 +1,688 @@
+/* V17 — encarte semanal, história da loja e dúvidas frequentes */
+.weekly-flyer,
+.institutional-gallery,
+.faq-section {
+  box-sizing: border-box;
+  width: min(100%, var(--content-max, 1400px));
+  margin-right: auto;
+  margin-left: auto;
+  content-visibility: auto;
+  contain-intrinsic-size: 760px;
+}
+
+.weekly-flyer {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(260px, 0.72fr) minmax(500px, 1.28fr);
+  gap: clamp(28px, 4vw, 66px);
+  align-items: center;
+  min-height: 485px;
+  margin-top: 34px;
+  margin-bottom: 72px;
+  padding: clamp(35px, 5vw, 72px);
+  overflow: hidden;
+  color: #fff;
+  border: 1px solid #ffffff17;
+  border-radius: 36px;
+  background:
+    radial-gradient(circle at 88% 12%, #397eff 0, #397eff00 31%),
+    radial-gradient(circle at 12% 105%, #ef283f45 0, #ef283f00 38%),
+    linear-gradient(135deg, #061f59 0%, #063f9c 53%, #075cdd 100%);
+  box-shadow: 0 30px 80px #053a8d38;
+}
+
+.weekly-flyer::before,
+.weekly-flyer::after {
+  position: absolute;
+  content: "";
+  pointer-events: none;
+}
+
+.weekly-flyer::before {
+  right: -88px;
+  bottom: -130px;
+  width: 350px;
+  height: 350px;
+  border: 70px solid #ffffff0a;
+  border-radius: 50%;
+}
+
+.weekly-flyer::after {
+  top: 26px;
+  left: 48%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    86px 36px 0 #ffffff75,
+    196px -8px 0 #ffffff35,
+    308px 80px 0 #ffffff55,
+    410px 22px 0 #ffffff35;
+}
+
+.weekly-flyer-copy,
+.weekly-flyer-products,
+.weekly-flyer-art {
+  position: relative;
+  z-index: 1;
+}
+
+.weekly-flyer-copy > span,
+.institutional-copy > span,
+.faq-heading > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.18em;
+}
+
+.weekly-flyer-copy > span {
+  padding: 9px 13px;
+  color: #062c74;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 9px 25px #00153822;
+}
+
+.weekly-flyer-copy h2 {
+  max-width: 570px;
+  margin: 18px 0 16px;
+  font-size: clamp(38px, 5vw, 70px);
+  line-height: 0.96;
+  letter-spacing: -0.055em;
+}
+
+.weekly-flyer-copy > p {
+  max-width: 520px;
+  margin: 0;
+  color: #dceaff;
+  font-size: clamp(14px, 1.3vw, 17px);
+  line-height: 1.7;
+}
+
+.weekly-flyer-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 27px;
+}
+
+.weekly-flyer-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 20px;
+  color: #fff;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f1273b, #df172c);
+  box-shadow: 0 13px 30px #a90d2b4d;
+  font-size: 12px;
+  font-weight: 950;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.weekly-flyer-actions a:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 17px 36px #a90d2b66;
+}
+
+.weekly-flyer-actions small {
+  max-width: 290px;
+  color: #b9cff3;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.weekly-flyer-products {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  min-height: 350px;
+}
+
+.weekly-flyer-products article {
+  display: flex;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #ffffff26;
+  border-radius: 23px;
+  background: #ffffff;
+  box-shadow: 0 18px 45px #03163d2e;
+}
+
+.weekly-flyer-products article.featured {
+  grid-row: span 2;
+}
+
+.weekly-flyer-product {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  padding: 15px;
+  text-align: left;
+  color: #10233f;
+  border: 0;
+  background: transparent;
+}
+
+.weekly-flyer-products article.featured .weekly-flyer-product {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.weekly-flyer-product img {
+  width: 92px;
+  height: 100%;
+  min-height: 102px;
+  object-fit: contain;
+}
+
+.weekly-flyer-products article.featured img {
+  width: 100%;
+  height: 185px;
+}
+
+.weekly-flyer-product > span {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+.weekly-flyer-product small {
+  color: #65758d;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.weekly-flyer-product b {
+  display: -webkit-box;
+  margin: 5px 0 8px;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.weekly-flyer-product del {
+  color: #8290a6;
+  font-size: 9px;
+}
+
+.weekly-flyer-product strong {
+  margin-top: 2px;
+  color: #ed2138;
+  font-size: clamp(17px, 1.7vw, 24px);
+  letter-spacing: -0.04em;
+}
+
+.weekly-flyer-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 92px;
+  margin: 11px;
+  padding: 0 12px;
+  color: #0756d9;
+  border: 0;
+  border-radius: 13px;
+  background: #edf4ff;
+  font-size: 9px;
+  font-weight: 950;
+}
+
+.weekly-flyer-products article.featured {
+  flex-direction: column;
+}
+
+.weekly-flyer-products article.featured .weekly-flyer-add {
+  min-height: 41px;
+}
+
+.weekly-flyer-placeholder {
+  grid-column: 1 / -1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 9px;
+  min-height: 280px;
+  padding: 30px;
+  text-align: center;
+  color: #173968;
+  border-radius: 24px;
+  background: #fff;
+}
+
+.weekly-flyer-placeholder span {
+  color: #75859c;
+  font-size: 11px;
+}
+
+.weekly-flyer-art {
+  width: min(100%, 520px);
+  min-height: 430px;
+  justify-self: center;
+  overflow: hidden;
+  border: 10px solid #fff;
+  border-radius: 28px;
+  background: #eef4fc;
+  box-shadow: 0 24px 60px #00183d4d;
+}
+
+.weekly-flyer-art img {
+  object-fit: contain;
+}
+
+.institutional-gallery {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.75fr) minmax(0, 1.25fr);
+  gap: clamp(30px, 5vw, 80px);
+  align-items: center;
+  margin-top: 76px;
+  margin-bottom: 86px;
+  padding: clamp(24px, 4vw, 56px);
+  border: 1px solid #dfe8f5;
+  border-radius: 34px;
+  background:
+    radial-gradient(circle at 2% 1%, #ddecff 0, transparent 29%),
+    linear-gradient(145deg, #fff, #f7faff);
+  box-shadow: 0 23px 65px #10284a10;
+}
+
+.institutional-copy > span,
+.faq-heading > span {
+  color: #0756d9;
+}
+
+.institutional-copy h2,
+.faq-heading h2 {
+  margin: 14px 0 15px;
+  color: #10233f;
+  font-size: clamp(34px, 4vw, 57px);
+  line-height: 1.02;
+  letter-spacing: -0.052em;
+}
+
+.institutional-copy > p,
+.faq-heading > p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.institutional-copy > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 26px;
+}
+
+.institutional-copy a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 16px;
+  color: #fff;
+  border-radius: 13px;
+  background: #0756d9;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.institutional-copy a:last-child {
+  color: #0756d9;
+  border: 1px solid #cadcf8;
+  background: #fff;
+}
+
+.institutional-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, 190px);
+  gap: 12px;
+}
+
+.institutional-photo-grid figure {
+  position: relative;
+  min-width: 0;
+  min-height: 190px;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 22px;
+  background: #dce7f6;
+  box-shadow: 0 17px 36px #10284a1a;
+}
+
+.institutional-photo-grid figure:first-child {
+  grid-row: 1 / -1;
+}
+
+.institutional-photo-grid.photos-1 figure,
+.institutional-photo-grid.photos-2 figure {
+  grid-row: 1 / -1;
+}
+
+.institutional-photo-grid.photos-1 figure {
+  grid-column: 1 / -1;
+}
+
+.institutional-photo-grid img {
+  object-fit: cover;
+  transition: transform 550ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.institutional-photo-grid figure:hover img {
+  transform: scale(1.045);
+}
+
+.institutional-photo-grid figcaption {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  left: 12px;
+  padding: 11px 13px;
+  color: #fff;
+  border: 1px solid #ffffff2b;
+  border-radius: 13px;
+  background: #071b3aba;
+  backdrop-filter: blur(12px);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.faq-section {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.68fr) minmax(0, 1.32fr);
+  gap: clamp(40px, 7vw, 110px);
+  align-items: start;
+  margin-top: 92px;
+  margin-bottom: 92px;
+  padding: clamp(28px, 4vw, 58px);
+  scroll-margin-top: 110px;
+  border-radius: 34px;
+  background: #f6f9fe;
+}
+
+.faq-heading {
+  position: sticky;
+  top: 118px;
+}
+
+.faq-list {
+  display: grid;
+  gap: 10px;
+}
+
+.faq-list details {
+  overflow: hidden;
+  border: 1px solid #dce6f3;
+  border-radius: 17px;
+  background: #fff;
+  box-shadow: 0 9px 25px #10284a08;
+}
+
+.faq-list summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 66px;
+  padding: 17px 20px;
+  cursor: pointer;
+  list-style: none;
+  color: #152943;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.faq-list summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-list summary i {
+  position: relative;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #edf4ff;
+}
+
+.faq-list summary i::before,
+.faq-list summary i::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 11px;
+  height: 2px;
+  content: "";
+  border-radius: 4px;
+  background: #0756d9;
+  transform: translate(-50%, -50%);
+  transition: transform 180ms ease;
+}
+
+.faq-list summary i::after {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+.faq-list details[open] summary i::after {
+  transform: translate(-50%, -50%) rotate(0deg);
+}
+
+.faq-list details[open] summary {
+  color: #0756d9;
+}
+
+.faq-list details > p {
+  margin: -2px 20px 20px;
+  padding: 0 50px 0 0;
+  color: #627187;
+  font-size: 11px;
+  line-height: 1.72;
+}
+
+.weekly-flyer a:focus-visible,
+.weekly-flyer button:focus-visible,
+.institutional-gallery a:focus-visible,
+.faq-list summary:focus-visible {
+  outline: 3px solid #f8c538;
+  outline-offset: 3px;
+}
+
+@media (max-width: 1080px) {
+  .weekly-flyer {
+    grid-template-columns: 0.7fr 1.3fr;
+    gap: 28px;
+    padding: 38px;
+  }
+
+  .weekly-flyer-products {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(3, minmax(130px, auto));
+  }
+
+  .weekly-flyer-products article.featured {
+    grid-row: auto;
+    flex-direction: row;
+  }
+
+  .weekly-flyer-products article.featured .weekly-flyer-product {
+    flex-direction: row;
+  }
+
+  .weekly-flyer-products article.featured img {
+    width: 92px;
+    height: 100%;
+  }
+
+  .weekly-flyer-products article.featured .weekly-flyer-add {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 820px) {
+  .weekly-flyer,
+  .institutional-gallery,
+  .faq-section {
+    width: calc(100% - 30px);
+  }
+
+  .weekly-flyer,
+  .institutional-gallery,
+  .faq-section {
+    grid-template-columns: 1fr;
+  }
+
+  .weekly-flyer {
+    padding: 34px;
+  }
+
+  .weekly-flyer-copy {
+    text-align: center;
+  }
+
+  .weekly-flyer-copy > p,
+  .weekly-flyer-actions,
+  .weekly-flyer-actions small {
+    align-items: center;
+    margin-right: auto;
+    margin-left: auto;
+  }
+
+  .weekly-flyer-art {
+    min-height: 520px;
+  }
+
+  .institutional-copy {
+    text-align: center;
+  }
+
+  .institutional-copy > div {
+    justify-content: center;
+  }
+
+  .faq-heading {
+    position: static;
+    max-width: 610px;
+    text-align: center;
+    justify-self: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .weekly-flyer {
+    min-height: 0;
+    margin-top: 20px;
+    margin-bottom: 54px;
+    padding: 27px 16px 18px;
+    border-radius: 26px;
+  }
+
+  .weekly-flyer-copy h2 {
+    font-size: 39px;
+  }
+
+  .weekly-flyer-products {
+    gap: 8px;
+  }
+
+  .weekly-flyer-products article,
+  .weekly-flyer-products article.featured {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .weekly-flyer-product,
+  .weekly-flyer-products article.featured .weekly-flyer-product {
+    flex-direction: row;
+    padding: 10px;
+  }
+
+  .weekly-flyer-product img,
+  .weekly-flyer-products article.featured img {
+    width: 76px;
+    min-height: 88px;
+  }
+
+  .weekly-flyer-add {
+    min-width: 42px;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .weekly-flyer-art {
+    min-height: 410px;
+    border-width: 7px;
+    border-radius: 22px;
+  }
+
+  .institutional-gallery,
+  .faq-section {
+    padding: 24px 16px;
+    border-radius: 25px;
+  }
+
+  .institutional-gallery {
+    margin-top: 52px;
+    margin-bottom: 58px;
+  }
+
+  .institutional-photo-grid {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+  }
+
+  .institutional-photo-grid figure,
+  .institutional-photo-grid.photos-1 figure,
+  .institutional-photo-grid.photos-2 figure {
+    flex: 0 0 88%;
+    min-height: 300px;
+    scroll-snap-align: center;
+  }
+
+  .faq-section {
+    gap: 28px;
+    margin-top: 58px;
+    margin-bottom: 58px;
+  }
+
+  .faq-heading h2,
+  .institutional-copy h2 {
+    font-size: 36px;
+  }
+
+  .faq-list summary {
+    min-height: 62px;
+    padding: 15px;
+  }
+
+  .faq-list details > p {
+    margin: 0 15px 17px;
+    padding: 0 34px 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .institutional-photo-grid img,
+  .weekly-flyer-actions a,
+  .faq-list summary i::after {
+    transition: none;
+  }
+}

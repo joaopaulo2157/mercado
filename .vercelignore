@@ -1,0 +1,9 @@
+# SC Supermercado Central - arquivos que nao fazem parte do runtime Vercel
+legacy/cloudflare-sites/**
+.sites-runtime/**
+.wrangler/**
+work/**
+outputs/**
+*.zip
+*.bat
+LOG_VERCEL_*.txt

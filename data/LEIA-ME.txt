@@ -1,1 +1,0 @@
-O arquivo sc-central.sqlite será criado automaticamente na primeira execução da V4.

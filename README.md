@@ -1,191 +1,125 @@
-# Supermercado SC Central — V6 FINAL
+# Supermercado Central
 
-[![Validar SC Central V6](https://github.com/joaopaulo2157/sc-central-supermercado/actions/workflows/validate.yml/badge.svg)](https://github.com/joaopaulo2157/sc-central-supermercado/actions/workflows/validate.yml)
-![Node.js](https://img.shields.io/badge/Node.js-22.5%2B-339933?logo=node.js&logoColor=white)
-![Status](https://img.shields.io/badge/status-V6%20FINAL-0b5ed7)
+Aplicação do **Supermercado Central** preparada para rodar com **Next.js + MySQL/MariaDB**, sem depender do Cloudflare D1 ou R2.
 
-Sistema web do **Supermercado SC Central** com catálogo, produtos por unidade e peso, carrinho, checkout via WhatsApp, painel administrativo, estoque, pedidos, clientes, relatórios e PWA.
+## O que mudou nesta versão
 
-## Recursos
+- banco principal migrado de D1/SQLite para **MySQL/MariaDB**;
+- consultas específicas do SQLite convertidas para SQL compatível com MySQL/MariaDB;
+- camada de compatibilidade em `lib/sql-database.ts`, preservando as rotas e funcionalidades existentes;
+- imagens enviadas pelo painel armazenadas na tabela `media_files`;
+- backups do catálogo armazenados na tabela `catalog_backups`;
+- estoque com `DECIMAL(12,3)`, permitindo produtos vendidos por peso;
+- autenticação administrativa local por sessão segura, sem depender de cabeçalhos do Cloudflare/ChatGPT;
+- execução principal convertida para **Next.js em Node.js**;
+- arquivos antigos do Cloudflare/D1 preservados somente em `legacy/`, fora da compilação principal.
 
-- catálogo de produtos com imagens;
-- venda por unidade e por peso;
-- categorias e subcategorias;
-- preços, promoções e estoque;
-- carrinho persistente;
-- entrega ou retirada;
-- regiões, taxas e pedido mínimo;
-- cupons;
-- checkout organizado via WhatsApp;
-- histórico de pedidos e status;
-- reserva/devolução de estoque;
-- clientes e relatórios;
-- usuários e permissões;
-- auditoria;
-- importação CSV;
-- upload de imagens;
-- PWA / Service Worker;
-- API HTTP própria;
-- SQLite para desenvolvimento e servidor único.
+## Arquivos importantes
 
-## Stack
+- `database/supermercado_central.sql` — instalação completa do banco;
+- `database/LEIA-ME-INSTALACAO.txt` — instalação rápida;
+- `database/GUIA-MIGRACAO-D1-PARA-MYSQL.md` — detalhes técnicos da migração;
+- `.env.example` — modelo das variáveis de ambiente;
+- `lib/sql-database.ts` — conexão/pool MySQL e compatibilidade com a antiga API D1;
+- `db/schema.ts` — schema Drizzle em MySQL.
 
-- Node.js 22.5+
-- HTML5 / CSS3 / JavaScript
-- `node:http`
-- `node:sqlite`
-- PWA / Service Worker
-- GitHub Actions
-- Docker opcional
+## Requisitos
 
-## Estrutura
+- Node.js `>= 22.13.0`;
+- MySQL 5.7+/8.x ou MariaDB 10.3+;
+- uma hospedagem da aplicação que execute Node.js e consiga acessar o servidor MySQL/MariaDB.
 
-```text
-sc-central-supermercado/
-├── .github/            # CI, CODEOWNERS e templates
-├── data/               # SQLite local; banco não é versionado
-├── docs/               # deploy, operação e organização
-├── public/             # loja, painel, assets e PWA
-├── src/                # banco, segurança e integrações
-├── legacy-v3/          # histórico preservado
-├── legacy-v5/          # histórico preservado
-├── Dockerfile
-├── railway.json        # Config as Code para Railway
-├── compose.yaml
-├── server.js
-└── package.json
+> O banco pode estar em cPanel, Plesk, VPS, servidor próprio ou serviço MySQL gerenciado. A hospedagem do site precisa suportar Node.js porque o projeto continua sendo uma aplicação Next.js.
+
+## Instalação do banco
+
+1. Crie um banco MySQL/MariaDB vazio na hospedagem.
+2. Crie um usuário e conceda privilégios sobre esse banco.
+3. Abra o phpMyAdmin (ou outro cliente SQL), selecione o banco e importe:
+
+   `database/supermercado_central.sql`
+
+O arquivo cria **23 tabelas**, índices e os dados iniciais do projeto.
+
+## Configuração da aplicação
+
+Copie `.env.example` para `.env.local` durante o desenvolvimento ou cadastre as mesmas variáveis no painel da hospedagem.
+
+Exemplo por campos separados:
+
+```env
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=supermercado_user
+DB_PASSWORD=sua-senha
+DB_NAME=supermercado_central
+DB_SSL=false
+DB_CONNECTION_LIMIT=10
+
+AUTH_MODE=local
+ADMIN_EMAILS=admin@seudominio.com
+ADMIN_PASSWORD=uma-senha-administrativa-forte
+ADMIN_SESSION_SECRET=um-segredo-longo-e-aleatorio
 ```
 
-## Rodar localmente
+Ou use uma URL completa:
+
+```env
+DATABASE_URL=mysql://usuario:senha@host:3306/supermercado_central
+```
+
+Se a hospedagem do banco exigir SSL, configure também:
+
+```env
+DB_SSL=true
+DB_SSL_REJECT_UNAUTHORIZED=true
+```
+
+## Instalação e execução
 
 ```bash
-npm start
-```
-
-Loja:
-
-```text
-http://localhost:3000/
-```
-
-Painel:
-
-```text
-http://localhost:3000/login.html
-```
-
-Modo de desenvolvimento:
-
-```bash
+npm install
 npm run dev
 ```
 
-## Variáveis de ambiente
-
-O arquivo `.env.example` documenta as variáveis aceitas. O servidor lê `process.env`; portanto, em produção configure as variáveis diretamente na plataforma de hospedagem ou no ambiente do processo.
-
-Principais variáveis:
-
-```text
-PORT
-HOST
-SC_HTTPS
-SC_SESSION_HOURS
-SC_ADMIN_USER
-SC_ADMIN_PASSWORD
-SC_DB_PATH
-SC_WEBHOOK_URL
-SC_WEBHOOK_TOKEN
-```
-
-Nunca versione `.env`, tokens ou senhas reais.
-
-## Validação
+Para produção:
 
 ```bash
-npm run check
+npm run build
+npm start
 ```
 
-O GitHub Actions executa automaticamente:
+O primeiro `npm install` gera um novo `package-lock.json` contendo o driver `mysql2`. O lockfile da versão antiga foi preservado como `legacy/cloudflare-sites/package-lock.d1-legacy.json` somente para histórico.
 
-1. validação de sintaxe;
-2. inicialização do servidor;
-3. teste do endpoint `/api/health`.
+## Painel administrativo
 
-## Docker
+Por padrão, `AUTH_MODE=local` habilita o login próprio do projeto em `/admin/login`.
 
-```bash
-docker build -t sc-central-v6 .
-docker run -p 3000:3000 \
-  -v sc-central-data:/app/data \
-  -v sc-central-uploads:/app/public/uploads \
-  sc-central-v6
-```
+Configure obrigatoriamente:
 
-Ou:
+- `ADMIN_EMAILS` — um ou mais e-mails autorizados, separados por vírgula;
+- `ADMIN_PASSWORD` — senha do login;
+- `ADMIN_SESSION_SECRET` — segredo longo usado para assinar a sessão.
 
-```bash
-docker compose up -d --build
-```
+As permissões internas e os níveis de acesso do painel continuam sendo controlados pelas tabelas e regras já existentes no projeto.
 
-Antes do deploy, consulte [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+## Hospedagem com cPanel/Plesk
 
-## Persistência
+No painel da hospedagem:
 
-Como a aplicação usa SQLite e uploads locais, uma hospedagem com filesystem efêmero precisa de armazenamento persistente para:
+1. crie o banco e o usuário MySQL;
+2. associe o usuário ao banco com os privilégios necessários;
+3. importe `database/supermercado_central.sql`;
+4. configure as variáveis `DB_*` no ambiente da aplicação Node.js;
+5. se banco e aplicação estiverem em servidores diferentes, habilite o acesso remoto ao MySQL para o host/IP da aplicação;
+6. execute `npm install`, `npm run build` e inicie com `npm start` ou pelo gerenciador Node do provedor.
 
-```text
-/app/data
-/app/public/uploads
-```
+## Migração de dados que já estejam no D1
 
-Sem isso, banco e imagens podem ser perdidos em um redeploy.
+O arquivo SQL incluído instala a **estrutura e os dados iniciais presentes no código deste ZIP**. Ele não consegue, sozinho, acessar um banco D1 remoto.
 
-## Segurança
+Se existir um D1 em produção contendo pedidos, clientes, estoque ou outros registros mais recentes, exporte esses dados antes de desligá-lo e importe-os no MySQL. O guia em `database/GUIA-MIGRACAO-D1-PARA-MYSQL.md` explica essa diferença.
 
-- `.env` não é versionado;
-- banco local não é versionado;
-- uploads locais não são versionados;
-- altere a senha administrativa antes da publicação;
-- use HTTPS em produção;
-- mantenha backups de banco e uploads;
-- não publique vulnerabilidades em Issues públicas.
+## Legado
 
-Consulte [`SECURITY.md`](SECURITY.md).
-
-## GitHub Pages
-
-**GitHub Pages não executa a aplicação completa**, pois a V6 possui backend Node.js e banco de dados. O GitHub é usado para versionamento, revisão e CI. Para colocar a loja online, use uma hospedagem com suporte a Node.js ou containers.
-
-## Documentação
-
-- [`ARQUITETURA-V6-FINAL.md`](ARQUITETURA-V6-FINAL.md)
-- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
-- [`docs/RAILWAY.md`](docs/RAILWAY.md)
-- [`docs/PERSISTENCIA-RAILWAY.md`](docs/PERSISTENCIA-RAILWAY.md)
-- [`docs/OPERATIONS.md`](docs/OPERATIONS.md)
-- [`docs/REPOSITORY.md`](docs/REPOSITORY.md)
-- [`SECURITY.md`](SECURITY.md)
-- [`CONTRIBUTING.md`](CONTRIBUTING.md)
-- [`CHANGELOG-V6-FINAL.txt`](CHANGELOG-V6-FINAL.txt)
-- [`MODELO-IMPORTACAO-PRODUTOS.csv`](MODELO-IMPORTACAO-PRODUTOS.csv)
-
-## Fluxo recomendado
-
-```text
-alteração
-  ↓
-npm run check
-  ↓
-commit
-  ↓
-push / pull request
-  ↓
-GitHub Actions
-  ↓
-deploy
-```
-
-Repositório oficial: https://github.com/joaopaulo2157/sc-central-supermercado
-
-A base principal continua sendo a **V6 FINAL**.
+Arquivos específicos do antigo ambiente Cloudflare/Vinext foram mantidos em `legacy/cloudflare-sites/` e as migrações SQLite/D1 em `database/legacy/`. Eles não fazem parte da compilação atual e não devem ser importados no MySQL.

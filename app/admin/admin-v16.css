@@ -1,0 +1,647 @@
+/* V16 — operação real: prontidão, edição em massa, scanner e Kanban */
+.product-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.product-toolbar-actions .scan-product {
+  border: 1px solid #bcd0ec;
+  color: #0756d9;
+  background: #edf4ff;
+}
+
+.operations-checklist {
+  margin: 18px 0;
+  padding: 24px;
+  border: 1px solid #dfe7f1;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 12px 35px #10284a0a;
+}
+
+.operations-checklist > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.operations-checklist header span,
+.bulk-editor > header span,
+.orders-kanban-shell > header span,
+.barcode-scanner header span {
+  color: #0756d9;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+}
+
+.operations-checklist h2,
+.bulk-editor h2,
+.orders-kanban-shell h2,
+.barcode-scanner h2 {
+  margin: 6px 0 0;
+  font-size: 22px;
+}
+
+.operations-checklist > header > strong {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(145deg, #0756d9, #0c72ec);
+  box-shadow: 0 12px 25px #0756d930;
+  font-size: 17px;
+}
+
+.operations-progress {
+  height: 7px;
+  margin: 18px 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e9eef5;
+}
+
+.operations-progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #0756d9, #2e87f4, #18a768);
+  transition: width 0.35s ease;
+}
+
+.operations-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.operations-grid button {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid #e2e8f1;
+  border-radius: 12px;
+  color: #263b58;
+  background: #f9fbfe;
+  text-align: left;
+}
+
+.operations-grid button:hover {
+  border-color: #a8c5ee;
+  background: #f1f6ff;
+  transform: translateY(-2px);
+}
+
+.operations-grid button > span {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.operations-grid button > span.ok {
+  color: #137a4a;
+  background: #e3f7ed;
+}
+
+.operations-grid button > span.pending {
+  color: #b13c45;
+  background: #ffeaec;
+}
+
+.operations-grid b,
+.operations-grid small {
+  display: block;
+}
+
+.operations-grid b {
+  font-size: 9px;
+}
+
+.operations-grid small {
+  margin-top: 4px;
+  color: #8190a3;
+  font-size: 7px;
+  line-height: 1.4;
+}
+
+.operations-grid button > i {
+  color: #0756d9;
+  font-style: normal;
+}
+
+.bulk-editor,
+.orders-kanban-shell {
+  min-width: 0;
+}
+
+.bulk-editor > header,
+.orders-kanban-shell > header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 25px;
+  margin-bottom: 18px;
+}
+
+.bulk-editor > header p,
+.orders-kanban-shell > header p {
+  max-width: 520px;
+  margin: 7px 0 0;
+  color: #718096;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.bulk-editor > header > strong {
+  padding: 10px 14px;
+  border-radius: 999px;
+  color: #0756d9;
+  background: #eaf2ff;
+  font-size: 10px;
+}
+
+.bulk-actions {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(150px, 0.6fr) auto;
+  align-items: end;
+  gap: 10px;
+  padding: 17px;
+  border: 1px solid #dfe7f1;
+  border-radius: 15px;
+  background: #fff;
+}
+
+.bulk-actions label {
+  color: #53647b;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.bulk-actions select,
+.bulk-actions input,
+.bulk-filter input {
+  width: 100%;
+  margin-top: 6px;
+  padding: 11px;
+  border: 1px solid #dce4ee;
+  border-radius: 9px;
+  outline: none;
+  background: #fff;
+  font-size: 10px;
+}
+
+.bulk-actions > button,
+.bulk-filter button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 9px;
+  padding: 0 16px;
+  color: #fff;
+  background: #0756d9;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.bulk-actions > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.bulk-filter {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 9px;
+  margin: 13px 0;
+}
+
+.bulk-filter input {
+  margin: 0;
+}
+
+.bulk-filter button {
+  color: #0756d9;
+  border: 1px solid #c5d7f0;
+  background: #edf4ff;
+}
+
+.bulk-product-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.bulk-product-grid > button {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 24px 52px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 11px;
+  border: 1px solid #dfe7f0;
+  border-radius: 12px;
+  color: #243852;
+  background: #fff;
+  text-align: left;
+}
+
+.bulk-product-grid > button.selected {
+  border-color: #0756d9;
+  background: #f1f6ff;
+  box-shadow: inset 0 0 0 1px #0756d9;
+}
+
+.bulk-product-grid > button > span {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #cbd7e6;
+  border-radius: 6px;
+  color: #fff;
+  background: #fff;
+  font-size: 9px;
+}
+
+.bulk-product-grid > button.selected > span {
+  border-color: #0756d9;
+  background: #0756d9;
+}
+
+.bulk-product-grid img {
+  border-radius: 9px;
+  object-fit: cover;
+}
+
+.bulk-product-grid b,
+.bulk-product-grid small {
+  display: block;
+}
+
+.bulk-product-grid b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px;
+}
+
+.bulk-product-grid small {
+  margin-top: 3px;
+  color: #8794a5;
+  font-size: 7px;
+}
+
+.bulk-product-grid strong {
+  color: #0756d9;
+  font-size: 10px;
+}
+
+.bulk-product-grid > button > small {
+  grid-column: 3 / -1;
+}
+
+.orders-kanban-shell > header p {
+  text-align: right;
+}
+
+.orders-kanban {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(260px, 1fr));
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  scroll-snap-type: x proximity;
+}
+
+.kanban-column {
+  min-height: 520px;
+  padding: 10px;
+  border: 1px solid #dfe6ef;
+  border-radius: 15px;
+  background: #eef2f7;
+  scroll-snap-align: start;
+}
+
+.kanban-column > header {
+  display: grid;
+  grid-template-columns: 29px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 4px 12px;
+}
+
+.kanban-column > header > span {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: #0756d9;
+  background: #dfeaff;
+  font-weight: 900;
+}
+
+.kanban-column > header b {
+  font-size: 9px;
+}
+
+.kanban-column > header small {
+  min-width: 22px;
+  padding: 4px 6px;
+  border-radius: 999px;
+  color: #68768a;
+  background: #fff;
+  font-size: 8px;
+  text-align: center;
+}
+
+.kanban-column > div {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.kanban-column > div > p {
+  padding: 30px 10px;
+  color: #93a0b0;
+  font-size: 8px;
+  text-align: center;
+}
+
+.kanban-column article {
+  padding: 13px;
+  border: 1px solid #dfe6ef;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 8px 22px #10284a0a;
+  cursor: grab;
+}
+
+.kanban-column article:active {
+  cursor: grabbing;
+}
+
+.kanban-order-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.kanban-order-top span {
+  color: #0756d9;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.kanban-order-top strong {
+  font-size: 10px;
+}
+
+.kanban-column h3 {
+  margin: 10px 0 3px;
+  font-size: 12px;
+}
+
+.kanban-column article > small {
+  color: #8290a2;
+  font-size: 7px;
+  line-height: 1.5;
+}
+
+.kanban-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 10px 0;
+}
+
+.kanban-tags span {
+  padding: 5px 7px;
+  border-radius: 999px;
+  color: #58687e;
+  background: #f0f4f9;
+  font-size: 7px;
+  font-weight: 800;
+}
+
+.kanban-column details {
+  margin: 8px 0;
+  padding-top: 8px;
+  border-top: 1px solid #edf1f5;
+  color: #69798e;
+  font-size: 8px;
+}
+
+.kanban-column summary {
+  color: #0756d9;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.kanban-column select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #dbe3ed;
+  border-radius: 8px;
+  background: #f8fafc;
+  font-size: 8px;
+}
+
+.kanban-column.completed > header > span {
+  color: #127548;
+  background: #def5e9;
+}
+
+.kanban-column.cancelled > header > span {
+  color: #b13c45;
+  background: #fee5e8;
+}
+
+.barcode-scanner {
+  position: relative;
+  width: min(560px, 100%);
+  padding: 22px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 30px 80px #06142e66;
+}
+
+.barcode-scanner > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 16px;
+}
+
+.barcode-scanner header button {
+  width: 35px;
+  height: 35px;
+  border: 0;
+  border-radius: 50%;
+  background: #edf2f7;
+  font-size: 20px;
+}
+
+.scanner-camera {
+  position: relative;
+  height: 300px;
+  overflow: hidden;
+  border: 8px solid #071f4d;
+  border-radius: 17px;
+  background: #07142a;
+}
+
+.scanner-camera video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.scanner-camera i {
+  position: absolute;
+  inset: 20% 10%;
+  border: 2px solid #ffffffc7;
+  border-radius: 12px;
+  box-shadow: 0 0 0 999px #06142e40;
+}
+
+.scanner-camera span {
+  position: absolute;
+  right: 11%;
+  left: 11%;
+  top: 50%;
+  height: 2px;
+  background: #f12532;
+  box-shadow: 0 0 12px #f12532;
+  animation: scanner-line 2s ease-in-out infinite;
+}
+
+.barcode-scanner > p {
+  color: #6d7c90;
+  font-size: 10px;
+  text-align: center;
+}
+
+.barcode-scanner form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.barcode-scanner form input {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #dce4ee;
+  border-radius: 9px;
+  outline: none;
+}
+
+.barcode-scanner form button {
+  border: 0;
+  border-radius: 9px;
+  padding: 0 16px;
+  color: #fff;
+  background: #0756d9;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.product-options-editor small {
+  display: block;
+  margin-top: 6px;
+  color: #8390a2;
+  font-size: 8px;
+  font-weight: 500;
+}
+
+@keyframes scanner-line {
+  0%,
+  100% {
+    transform: translateY(-75px);
+  }
+  50% {
+    transform: translateY(75px);
+  }
+}
+
+@media (max-width: 1100px) {
+  .operations-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bulk-product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .product-toolbar-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .operations-checklist,
+  .barcode-scanner {
+    padding: 17px;
+  }
+
+  .operations-checklist > header,
+  .bulk-editor > header,
+  .orders-kanban-shell > header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .operations-grid,
+  .bulk-product-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bulk-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .bulk-filter {
+    grid-template-columns: 1fr;
+  }
+
+  .orders-kanban-shell > header p {
+    text-align: left;
+  }
+
+  .orders-kanban {
+    grid-template-columns: repeat(6, 84vw);
+  }
+
+  .scanner-camera {
+    height: 230px;
+  }
+
+  .barcode-scanner form {
+    grid-template-columns: 1fr;
+  }
+
+  .barcode-scanner form button {
+    min-height: 42px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scanner-camera span {
+    animation: none;
+  }
+}

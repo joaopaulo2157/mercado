@@ -1,34 +1,42 @@
 {
-  "name": "sc-central-supermercado",
-  "version": "1.0.0",
+  "name": "supermercado-central",
+  "version": "0.1.0",
   "private": true,
-  "description": "Supermercado SC Central - catálogo, pedidos, painel administrativo, WhatsApp, PWA e banco PostgreSQL no Supabase.",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js",
-    "check": "node --check server.js && node --check src/supabase.js && node --check src/security.js && node --check src/integrations.js && node --check public/v4-boot.js && node --check public/v4-store.js && node --check public/v6.js && node --check public/admin-v4.js && node --check public/admin-v6.js && node --check public/login.js && node --check public/v3.js && node --check public/sw.js",
-    "ci": "npm run check"
-  },
   "engines": {
-    "node": ">=22.5.0"
+    "node": "22.x"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/joaopaulo2157/sc-central-supermercado.git"
+  "scripts": {
+    "install:ci": "npm install --no-audit --no-fund",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "npm run typecheck",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ignore-pattern .next --ignore-pattern legacy",
+    "db:generate": "drizzle-kit generate",
+    "build:vercel": "next build"
   },
-  "bugs": {
-    "url": "https://github.com/joaopaulo2157/sc-central-supermercado/issues"
+  "dependencies": {
+    "drizzle-orm": "0.45.2",
+    "motion": "^12.23.12",
+    "mysql2": "^3.24.2",
+    "next": "16.2.6",
+    "qrcode": "^1.5.4",
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
   },
-  "homepage": "https://github.com/joaopaulo2157/sc-central-supermercado",
-  "license": "UNLICENSED",
-  "keywords": [
-    "supermercado",
-    "ecommerce",
-    "whatsapp",
-    "nodejs",
-    "supabase",
-    "postgresql",
-    "pwa"
-  ]
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.2.1",
+    "@types/node": "22.19.19",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "drizzle-kit": "0.31.10",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.2.6",
+    "tailwindcss": "4.2.1",
+    "typescript": "5.9.3"
+  },
+  "type": "module",
+  "displayName": "Supermercado Central"
 }

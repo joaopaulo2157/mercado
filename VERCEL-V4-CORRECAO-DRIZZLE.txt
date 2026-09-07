@@ -1,0 +1,33 @@
+SC SUPERMERCADO CENTRAL - VERCEL V4
+===============================================
+
+ERRO CORRIGIDO
+-----------------------------------------------
+O Vercel V3 chegou corretamente ao build Next.js:
+
+  Running "next build"
+  Compiled successfully
+  Running TypeScript
+
+A falha seguinte ocorreu em:
+
+  db/index.ts
+
+Mensagem:
+
+  Property 'mode' is missing in type '{ schema: typeof schema; }'
+
+CORRECAO
+-----------------------------------------------
+Para Drizzle ORM + mysql2 + schema em MySQL comum:
+
+  drizzle(getSqlPool(), { schema, mode: "default" })
+
+A V4 mantem todas as correcoes anteriores:
+- MySQL/MariaDB portatil
+- rota de midia corrigida
+- Node 22.x
+- vercel.json com Next.js / next build
+- protecao anti-ENOSPC
+- build legado Cloudflare isolado
+- validacao previa do pacote

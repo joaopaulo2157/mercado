@@ -1,0 +1,1 @@
+ALTER TABLE `orders` ADD `stock_committed` integer DEFAULT false NOT NULL;
