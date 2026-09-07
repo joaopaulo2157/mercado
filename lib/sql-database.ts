@@ -91,49 +91,48 @@ export function getSqlPool(): Pool {
 type SqlBindValue =
   | string
   | number
-  | bigint
   | boolean
   | Date
-  | null
   | Buffer
-  | Uint8Array;
+  | null;
 
 function normalizeParameter(value: unknown): SqlBindValue {
   if (value === null || value === undefined) return null;
+
   if (value instanceof Date) return value;
   if (Buffer.isBuffer(value)) return value;
-  if (value instanceof Uint8Array) return value;
+  if (value instanceof Uint8Array) return Buffer.from(value);
 
-  if (
-    typeof value === "number" ||
-    typeof value === "bigint" ||
-    typeof value === "boolean"
-  ) {
+  if (typeof value === "number" || typeof value === "boolean") {
     return value;
   }
 
-  if (typeof value == "string") {
+  if (typeof value === "bigint") {
+    return value.toString();
+  }
+
+  if (typeof value === "string") {
+    const localDateTime = value.match(
+      /(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::(\d{2}))?$/,
+    );
+    if (localDateTime) {
+      return `${localDateTime[1]} ${localDateTime[2]}:${localDateTime[3] ?? "00"}`;
+    }
+
+    if (/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(value)) {
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) return parsed;
+    }
+
+    return value;
+  }
+
+  try {
     return JSON.stringify(value);
+  } catch {
+    return String(value);
   }
-  if (typeof value !== "string") return value;
-
-  // MySQL/MariaDB DATETIME aceita "YYYY-MM-DD HH:mm:ss". Os formulÃ¡rios do
-  // projeto utilizam ISO/datetime-local, entÃ£o normalizamos sem alterar textos comuns.
-  const localDateTime = value.match(
-    /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::(\d{2}))?$/,
-  );
-  if (localDateTime) {
-    return `${localDateTime[1]} ${localDateTime[2]}:${localDateTime[3] ?? "00"}`;
-  }
-
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(value)) {
-    const parsed = new Date(value);
-    if (!Number.isNaN(parsed.getTime())) return parsed;
-  }
-
-  return value;
 }
-
 function normalizeValue(value: unknown): unknown {
   if (value instanceof Date) return value.toISOString();
   return value;
@@ -153,7 +152,7 @@ async function executeOn<T = SqlRow>(
   params: unknown[],
 ): Promise<SqlResult<T>> {
   const values: SqlBindValue[] = params.map(normalizeParameter);
-  const [raw] = await executor.execute(query, values);
+  const [raw] = await executor.execute(query, values as any);
 
   if (Array.isArray(raw)) {
     const results = normalizeRows<T>(raw as RowDataPacket[]);
@@ -241,4 +240,5 @@ export function sqlDatabase() {
   compat ??= new SqlDatabaseCompat();
   return compat;
 }
+
 
