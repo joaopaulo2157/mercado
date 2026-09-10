@@ -26,6 +26,10 @@ import {
   touchAdminDevice,
 } from "@/lib/admin-operations";
 import { parseProductOptions } from "@/lib/commerce";
+import { hashAdminPassword } from "@/lib/admin-password";
+import { encryptTotpSecret } from "@/lib/admin-mfa";
+import { ensureV5SecuritySchema } from "@/lib/v5-schema";
+import { adminTotpConfigured } from "@/lib/totp";
 export const dynamic = "force-dynamic";
 type Row = Record<string, unknown>;
 const str = (v: unknown, max = 500) =>
@@ -101,6 +105,7 @@ const approvalSummary = (action: string, data: unknown) => {
   return `Executar ${action}`;
 };
 async function snapshot() {
+  await ensureV5SecuritySchema();
   const db = database();
   const [
     products,
@@ -173,7 +178,7 @@ async function snapshot() {
         "SELECT event,COUNT(*) total FROM metrics WHERE created_at>=DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 DAY) GROUP BY event",
       )
       .all<Row>(),
-    db.prepare("SELECT * FROM staff ORDER BY name,email").all<Row>(),
+    db.prepare("SELECT id,email,name,role,permissions_json,mfa_required,totp_enabled,active,created_at,updated_at,CASE WHEN password_hash<>'' THEN 1 ELSE 0 END AS has_password FROM staff ORDER BY name,email").all<Row>(),
     db
       .prepare(
         "SELECT m.product_id,p.name,COUNT(*) total FROM metrics m LEFT JOIN products p ON p.id=m.product_id WHERE m.event='cart_add' AND m.created_at>=DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 DAY) GROUP BY m.product_id,p.name ORDER BY total DESC LIMIT 5",
@@ -261,6 +266,7 @@ async function snapshot() {
       requireOwnerApproval:
         Number(security?.require_owner_approval ?? 1) === 1,
       newDeviceAlerts: Number(security?.new_device_alerts ?? 1) === 1,
+      ownerMfaEnabled: adminTotpConfigured(),
       updatedBy: String(security?.updated_by || "sistema"),
       updatedAt: String(security?.updated_at || ""),
     },
@@ -355,7 +361,11 @@ export async function GET(request: Request) {
 }
 export async function POST(request: Request) {
   const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin)
+  const fetchSite = request.headers.get("sec-fetch-site");
+  if (
+    (origin && origin !== new URL(request.url).origin) ||
+    (fetchSite && !["same-origin", "same-site", "none"].includes(fetchSite))
+  )
     return Response.json({ error: "Origem não permitida" }, { status: 403 });
   if (Number(request.headers.get("content-length") || 0) > 2_000_000)
     return Response.json(
@@ -1130,6 +1140,8 @@ export async function POST(request: Request) {
         .run();
       await audit(auth.user.email, "save", "notification", id, { title });
     } else if (action === "saveStaff") {
+      if (!(await ensureV5SecuritySchema()))
+        throw new Error("A migração de segurança V5 precisa ser aplicada no banco antes de salvar acessos");
       const d = data as Row;
       const email = str(d.email, 180).toLowerCase();
       const role = str(d.role, 30);
@@ -1165,9 +1177,30 @@ export async function POST(request: Request) {
           "Você não pode conceder permissões superiores ao seu próprio acesso",
         );
       const id = str(d.id, 80) || crypto.randomUUID();
+      const password = String(d.password || "");
+      const existing = await db
+        .prepare("SELECT id,password_hash,password_salt,password_updated_at,totp_secret_enc,totp_enabled FROM staff WHERE id=? OR lower(email)=? LIMIT 1")
+        .bind(id, email)
+        .first<Row>();
+      if (!existing && !password)
+        throw new Error("Defina uma senha inicial para o novo membro");
+      const credentials = password
+        ? hashAdminPassword(password)
+        : {
+            hash: String(existing?.password_hash || ""),
+            salt: String(existing?.password_salt || ""),
+          };
+      const mfaRequired = b(d.mfaRequired);
+      const newTotpSecret = String(d.totpSecret || "").trim();
+      const totpSecretEnc = newTotpSecret
+        ? encryptTotpSecret(newTotpSecret)
+        : String(existing?.totp_secret_enc || "");
+      const totpEnabled = mfaRequired && Boolean(totpSecretEnc);
+      if (mfaRequired && !totpSecretEnc)
+        throw new Error("Gere e configure o 2FA antes de salvar este acesso");
       await db
         .prepare(
-          "INSERT INTO staff(id,email,name,role,permissions_json,mfa_required,active,updated_at) VALUES(?,?,?,?,?,?,?,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE name=VALUES(name),role=VALUES(role),permissions_json=VALUES(permissions_json),mfa_required=VALUES(mfa_required),active=VALUES(active),updated_at=CURRENT_TIMESTAMP",
+          "INSERT INTO staff(id,email,name,role,permissions_json,password_hash,password_salt,password_updated_at,totp_secret_enc,totp_enabled,mfa_required,active,updated_at) VALUES(?,?,?,?,?,?,?,CURRENT_TIMESTAMP,?,?,?,?,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE email=VALUES(email),name=VALUES(name),role=VALUES(role),permissions_json=VALUES(permissions_json),password_updated_at=IF(VALUES(password_hash)<>password_hash,CURRENT_TIMESTAMP,password_updated_at),password_hash=VALUES(password_hash),password_salt=VALUES(password_salt),totp_secret_enc=VALUES(totp_secret_enc),totp_enabled=VALUES(totp_enabled),mfa_required=VALUES(mfa_required),active=VALUES(active),updated_at=CURRENT_TIMESTAMP",
         )
         .bind(
           id,
@@ -1175,7 +1208,11 @@ export async function POST(request: Request) {
           str(d.name, 120),
           role,
           JSON.stringify(permissions),
-          b(d.mfaRequired) ? 1 : 0,
+          credentials.hash,
+          credentials.salt,
+          totpSecretEnc,
+          totpEnabled ? 1 : 0,
+          mfaRequired ? 1 : 0,
           b(d.active) ? 1 : 0,
         )
         .run();

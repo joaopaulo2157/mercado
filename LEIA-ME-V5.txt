@@ -1,0 +1,59 @@
+SUPERMERCADO SC CENTRAL - V5.1 HOME PREMIUM
+============================================================
+
+Esta atualização parte da V5.0.1 corrigida e altera somente a experiência visual/comercial da página principal.
+O painel administrativo, banco, autenticação e fluxo de pedidos permanecem preservados.
+
+PRINCIPAIS ALTERAÇÕES VISUAIS
+- Ofertas no topo da jornada do cliente
+- Hero mais comercial
+- Setores com imagens de produtos
+- Destaques rápidos antes do catálogo
+- Cards de produto refinados
+- Carrinho mobile com subtotal
+- Menos ruído visual e movimentos mais discretos
+
+Para validar localmente, execute PREPARAR_PROJETO_V5_1.bat.
+
+------------------------------------------------------------
+
+================================================================
+  SC SUPERMERCADO CENTRAL V5
+================================================================
+
+BASE
+- Evolucao direta da V4 recuperada.
+- Next.js 16 + React 19 + MySQL/MariaDB + Drizzle.
+- Carrinho, checkout e finalizacao por WhatsApp foram preservados.
+
+ANTES DE PUBLICAR
+1. Copie .env.example para .env.local, ou configure as variaveis na Vercel.
+2. Use um ADMIN_SESSION_SECRET longo e exclusivo (64+ caracteres recomendado).
+3. Se o banco ja era da V4, execute:
+     MIGRAR_BANCO_V4_PARA_V5.bat
+   ou importe:
+     database\migrations\V5_SECURITY.sql
+4. Execute:
+     PREPARAR_PROJETO_V5.bat
+
+NOVIDADES PRINCIPAIS
+- Login individual da equipe com senha propria.
+- Senhas da equipe protegidas com scrypt + salt individual.
+- 2FA TOTP real com QR Code.
+- Segredos 2FA criptografados com AES-256-GCM.
+- Bloqueio de tentativas por conta e IP.
+- CSP, HSTS em producao e demais headers de seguranca.
+- Catálogo inicial, sitemap e produtos relacionados vindos do MySQL.
+- URL oficial do site configuravel sem dominio antigo fixo.
+- Busca tolerante a acentos e erros simples de digitacao.
+- PWA V5 com tela offline e sem cache de catalogo/pedidos/admin.
+- Imagens internas passam pela otimizacao do Next.js quando possivel.
+
+IMPORTANTE
+- Nunca envie .env.local para o GitHub.
+- A conta proprietaria continua definida por ADMIN_EMAILS/ADMIN_PASSWORD.
+- Para 2FA da conta proprietaria, configure ADMIN_TOTP_SECRET.
+- Para equipe, gere o QR Code dentro de Equipe e Permissoes.
+
+Mais detalhes: README.md e V5-CHANGELOG.md
+================================================================

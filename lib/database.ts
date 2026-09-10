@@ -56,6 +56,21 @@ export function mapProduct(r: SqlRow): Product {
     offerEnd: nullableText(r.offer_end),
   };
 }
+
+export function applyOfferSchedule(product: Product, now = new Date().toISOString()): Product {
+  const outside =
+    (product.offerStart && now < product.offerStart) ||
+    (product.offerEnd && now > product.offerEnd);
+  return outside && product.oldPriceCents
+    ? {
+        ...product,
+        priceCents: product.oldPriceCents,
+        oldPriceCents: null,
+        badge: product.badge.toLowerCase().includes("oferta") ? "" : product.badge,
+      }
+    : product;
+}
+
 export function mapCategory(r: SqlRow): Category {
   return {
     id: text(r.id),
@@ -179,21 +194,7 @@ export async function loadCatalog(): Promise<CatalogPayload> {
   ]);
   if (!s || !h) throw new Error("Configuração da loja não encontrada");
   const now = new Date().toISOString();
-  const products = p.results.map(mapProduct).map((product) => {
-    const outside =
-      (product.offerStart && now < product.offerStart) ||
-      (product.offerEnd && now > product.offerEnd);
-    return outside && product.oldPriceCents
-      ? {
-          ...product,
-          priceCents: product.oldPriceCents,
-          oldPriceCents: null,
-          badge: product.badge.toLowerCase().includes("oferta")
-            ? ""
-            : product.badge,
-        }
-      : product;
-  });
+  const products = p.results.map(mapProduct).map((product) => applyOfferSchedule(product, now));
   return {
     products,
     categories: c.results.map(mapCategory),

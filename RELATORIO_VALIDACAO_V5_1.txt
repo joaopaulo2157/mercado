@@ -1,0 +1,34 @@
+SC SUPERMERCADO CENTRAL V5.1 - RELATORIO DE VALIDACAO
+=======================================================
+
+BASE: V5.0.1 corrigida
+VERSAO package.json: 0.5.2
+FOCO: Home Premium / experiência do cliente
+
+ARQUIVOS FUNCIONAIS ALTERADOS
+- components/storefront.tsx
+- app/globals.css
+- app/home-premium-v5-1.css (novo)
+- package.json (somente versão)
+
+PAINEL ADMINISTRATIVO
+- Nenhum arquivo app/admin/* alterado.
+- components/admin-dashboard.tsx não alterado.
+- APIs administrativas não alteradas.
+
+BANCO E SEGURANCA
+- Nenhuma migration alterada.
+- Nenhum schema alterado.
+- Nenhum arquivo lib/admin-* alterado.
+- lib/sql-database.ts permanece com a correção V5.0.1.
+
+VALIDACOES REALIZADAS NESTE AMBIENTE
+- Parser TypeScript executado sobre components/storefront.tsx: nenhuma falha de sintaxe.
+  A checagem completa de tipos não pôde resolver módulos externos porque node_modules não faz parte do ZIP.
+- CSS V5.1 analisado com parser CSS: 0 erros de parsing.
+- Chaves CSS balanceadas.
+- Estrutura do pacote comparada contra a V5.0.1 para confirmar o escopo das mudanças.
+
+VALIDACAO FINAL NA MAQUINA
+Execute: PREPARAR_PROJETO_V5_1.bat
+O script fará npm install, npm run typecheck e npm run build.

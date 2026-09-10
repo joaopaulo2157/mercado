@@ -59,6 +59,7 @@ type AdminData = {
     requireMfa: boolean;
     requireOwnerApproval: boolean;
     newDeviceAlerts: boolean;
+    ownerMfaEnabled: boolean;
     updatedBy: string;
     updatedAt: string;
   };
@@ -887,6 +888,7 @@ export default function AdminDashboard({
           {tab === "team" && (
             <TeamAccessManager
               rows={data.staff}
+              requireMfa={data.securitySettings.requireMfa}
               busy={busy}
               save={(value) => post("saveStaff", value)}
             />
@@ -3094,14 +3096,19 @@ const parsePermissionList = (value: unknown): AdminPermission[] => {
 
 function TeamAccessManager({
   rows,
+  requireMfa,
   busy,
   save,
 }: {
   rows: Record<string, unknown>[];
+  requireMfa: boolean;
   busy: boolean;
   save: (value: Record<string, unknown>) => Promise<boolean>;
 }) {
   const [editor, setEditor] = useState<Record<string, unknown> | null>(null);
+  const [mfaSetup, setMfaSetup] = useState<{ secret: string; qrDataUrl: string } | null>(null);
+  const [mfaBusy, setMfaBusy] = useState(false);
+  const [mfaError, setMfaError] = useState("");
   const editorOpen = Boolean(editor);
   useEffect(() => {
     if (!editorOpen) return;
@@ -3116,14 +3123,19 @@ function TeamAccessManager({
       document.removeEventListener("keydown", closeOnEscape);
     };
   }, [editorOpen]);
-  const openEditor = (member?: Record<string, unknown>) =>
+  const openEditor = (member?: Record<string, unknown>) => {
+    setMfaSetup(null);
+    setMfaError("");
     setEditor(
       member
         ? {
             ...member,
             permissions: parsePermissionList(member.permissions_json),
-            mfaRequired: Number(member.mfa_required ?? 1) === 1,
+            mfaRequired: requireMfa || Number(member.mfa_required ?? 1) === 1,
+            totpEnabled: Number(member.totp_enabled ?? 0) === 1,
             active: Number(member.active ?? 1) === 1,
+            password: "",
+            totpSecret: "",
           }
         : {
             name: "",
@@ -3131,9 +3143,38 @@ function TeamAccessManager({
             role: "manager",
             permissions: [],
             mfaRequired: true,
+            totpEnabled: false,
             active: true,
+            password: "",
+            totpSecret: "",
           },
     );
+  };
+  const generateMfaSetup = async () => {
+    const email = String(editor?.email || "").trim();
+    if (!email.includes("@")) return;
+    setMfaBusy(true);
+    setMfaError("");
+    try {
+      const response = await fetch("/api/admin/mfa/setup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Falha ao gerar 2FA");
+      setMfaSetup({ secret: result.secret, qrDataUrl: result.qrDataUrl });
+      setEditor((current) =>
+        current
+          ? { ...current, mfaRequired: true, totpSecret: result.secret }
+          : current,
+      );
+    } catch (error) {
+      setMfaError(error instanceof Error ? error.message : "Falha ao gerar 2FA");
+    } finally {
+      setMfaBusy(false);
+    }
+  };
   return (
     <section className="admin-section-stack">
       <AdminSectionHeader
@@ -3169,9 +3210,11 @@ function TeamAccessManager({
                 <div className="team-role-line">
                   <strong>{role?.label || String(member.role)}</strong>
                   <span>
-                    {Number(member.mfa_required ?? 1) === 1
-                      ? "Política 2FA"
-                      : "2FA recomendado"}
+                    {requireMfa || Number(member.mfa_required ?? 1) === 1
+                      ? Number(member.totp_enabled ?? 0) === 1
+                        ? "2FA ativo"
+                        : "2FA pendente"
+                      : "2FA opcional"}
                   </span>
                 </div>
                 <p>{role?.description || "Perfil personalizado da equipe."}</p>
@@ -3236,7 +3279,7 @@ function TeamAccessManager({
                 />
               </label>
               <label>
-                E-mail da conta ChatGPT
+                E-mail de acesso
                 <input
                   required
                   type="email"
@@ -3245,6 +3288,21 @@ function TeamAccessManager({
                     setEditor({ ...editor, email: event.target.value })
                   }
                 />
+              </label>
+              <label className="full">
+                {editor.id ? "Nova senha (opcional)" : "Senha inicial"}
+                <input
+                  type="password"
+                  minLength={12}
+                  required={!editor.id}
+                  autoComplete="new-password"
+                  value={String(editor.password || "")}
+                  onChange={(event) =>
+                    setEditor({ ...editor, password: event.target.value })
+                  }
+                  placeholder={editor.id ? "Deixe em branco para manter a senha atual" : "Mínimo de 12 caracteres"}
+                />
+                <small>Use maiúsculas, minúsculas e números. Cada membro entra com a própria senha.</small>
               </label>
               <label className="full">
                 Perfil-base
@@ -3298,13 +3356,14 @@ function TeamAccessManager({
                 <input
                   type="checkbox"
                   checked={Boolean(editor.mfaRequired)}
+                  disabled={requireMfa}
                   onChange={(event) =>
                     setEditor({ ...editor, mfaRequired: event.target.checked })
                   }
                 />
                 <span>
                   <b>Exigir 2FA na conta</b>
-                  <small>Política verificada pelo responsável da equipe.</small>
+                  <small>{requireMfa ? "Obrigatório pela política global de segurança." : "Validação TOTP real no login administrativo."}</small>
                 </span>
               </label>
               <label>
@@ -3321,6 +3380,46 @@ function TeamAccessManager({
                 </span>
               </label>
             </div>
+            {Boolean(editor.mfaRequired) && (
+              <div className="mfa-setup-box">
+                <div>
+                  <b>Autenticador em duas etapas</b>
+                  <small>
+                    {Boolean(editor.totpEnabled) && !mfaSetup
+                      ? "Este acesso já possui 2FA configurado. Gere uma nova chave somente para substituir a atual."
+                      : "Gere a chave, escaneie o QR Code no aplicativo autenticador e salve o acesso."}
+                  </small>
+                </div>
+                <button
+                  type="button"
+                  onClick={generateMfaSetup}
+                  disabled={mfaBusy || !String(editor.email || "").includes("@")}
+                >
+                  {mfaBusy
+                    ? "Gerando..."
+                    : Boolean(editor.totpEnabled)
+                      ? "Regenerar 2FA"
+                      : "Gerar 2FA"}
+                </button>
+                {mfaError && <p className="mfa-setup-error">{mfaError}</p>}
+                {mfaSetup && (
+                  <div className="mfa-setup-result">
+                    <Image
+                      src={mfaSetup.qrDataUrl}
+                      alt="QR Code para configurar o autenticador"
+                      width={190}
+                      height={190}
+                      unoptimized
+                    />
+                    <div>
+                      <span>Chave manual</span>
+                      <code>{mfaSetup.secret}</code>
+                      <small>Guarde esta chave em local seguro. Ela não será exibida novamente depois de salvar.</small>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             <footer>
               <button type="button" onClick={() => setEditor(null)}>
                 Cancelar
@@ -3377,6 +3476,13 @@ function SecurityCenter({
   ];
   return (
     <section className="admin-section-stack">
+      <div className={`owner-mfa-status ${settings.ownerMfaEnabled ? "active" : "warning"}`}>
+        <AdminIcon name="security" size={20} />
+        <div>
+          <b>{settings.ownerMfaEnabled ? "2FA do proprietário ativo" : "2FA do proprietário ainda não ativado"}</b>
+          <small>{settings.ownerMfaEnabled ? "A conta proprietária exige código TOTP no login." : "Defina ADMIN_TOTP_SECRET na hospedagem para proteger também a conta proprietária."}</small>
+        </div>
+      </div>
       <AdminSectionHeader
         eyebrow="PROTEÇÃO EM CAMADAS"
         title="Central de segurança"
@@ -3393,9 +3499,9 @@ function SecurityCenter({
           <b>proteções ativas</b>
         </div>
         <p>
-          O login e o segundo fator são processados pela autenticação do
-          ChatGPT. Este painel aplica autorização e políticas adicionais no
-          servidor da loja.
+          O login local usa credenciais individuais e o 2FA TOTP é validado no
+          servidor da loja. Permissões e ações sensíveis continuam protegidas
+          por função e trilha de auditoria.
         </p>
         <i>
           <AdminIcon name="lock" size={24} />
@@ -3440,7 +3546,7 @@ function SecurityCenter({
             <span>ATIVIDADE DE ACESSO</span>
             <h3>Dispositivos administrativos</h3>
           </div>
-          <small>A autenticação principal permanece no ChatGPT</small>
+          <small>Sessões administrativas registradas pelo painel</small>
         </header>
         <div>
           {devices.length ? (

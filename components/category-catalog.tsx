@@ -110,7 +110,7 @@ export default function CategoryCatalog({
                     alt={product.name}
                     fill
                     sizes="(max-width: 700px) 50vw, 25vw"
-                    unoptimized
+                    unoptimized={/^https?:\/\//i.test(product.imageUrl)}
                   />
                   {product.badge ? <span>{product.badge}</span> : null}
                 </div>

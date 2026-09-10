@@ -1,4 +1,4 @@
-﻿import mysql, {
+import mysql, {
   type Pool,
   type PoolConnection,
   type ResultSetHeader,
@@ -6,6 +6,16 @@
 } from "mysql2/promise";
 
 type SqlRow = Record<string, unknown>;
+
+type SqlParameter =
+  | string
+  | number
+  | bigint
+  | boolean
+  | Date
+  | null
+  | Buffer
+  | Uint8Array;
 
 type SqlMeta = {
   changes: number;
@@ -47,7 +57,7 @@ function databaseConfig() {
     const database = decodeURIComponent(parsed.pathname.replace(/^\/+/, ""));
     if (!parsed.hostname || !parsed.username || !database) {
       throw new Error(
-        "DATABASE_URL invÃ¡lida. Use mysql://usuario:senha@host:3306/banco.",
+        "DATABASE_URL inválida. Use mysql://usuario:senha@host:3306/banco.",
       );
     }
     return {
@@ -65,7 +75,7 @@ function databaseConfig() {
   const database = process.env.DB_NAME?.trim();
   if (!host || !user || !database) {
     throw new Error(
-      "Banco SQL nÃ£o configurado. Defina DATABASE_URL ou DB_HOST, DB_PORT, DB_USER, DB_PASSWORD e DB_NAME.",
+      "Banco SQL não configurado. Defina DATABASE_URL ou DB_HOST, DB_PORT, DB_USER, DB_PASSWORD e DB_NAME.",
     );
   }
 
@@ -88,41 +98,48 @@ export function getSqlPool(): Pool {
   return pool;
 }
 
-type SqlBindValue =
-  | string
-  | number
-  | boolean
-  | Date
-  | Buffer
-  | null;
-
-function normalizeParameter(value: unknown): SqlBindValue {
+function normalizeParameter(value: unknown): SqlParameter {
+  // mysql2 >= 3.24 usa ExecuteValues estrito. Nunca repassamos `undefined`
+  // ou objetos arbitrarios diretamente para prepared statements.
   if (value === null || value === undefined) return null;
   if (value instanceof Date) return value;
   if (Buffer.isBuffer(value)) return value;
-  if (value instanceof Uint8Array) return Buffer.from(value);
-
-  if (typeof value === "number" || typeof value === "boolean") return value;
-  if (typeof value === "bigint") return value.toString();
-
-  if (typeof value === "string") {
-    const localDateTime = value.match(
-      /(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::(\d{2}))?$/,
-    );
-    if (localDateTime) {
-      return `${localDateTime[1]} ${localDateTime[2]}:${localDateTime[3] ?? "00"}`;
-    }
-
-    if (/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(value)) {
-      const parsed = new Date(value);
-      if (Number.isNaN(parsed.getTime())) return parsed;
-    }
+  if (value instanceof Uint8Array) return value;
+  if (
+    typeof value === "number" ||
+    typeof value === "bigint" ||
+    typeof value === "boolean"
+  ) {
     return value;
   }
 
-  try { return JSON.stringify(value); }
-  catch { return String(value); }
+  if (typeof value !== "string") {
+    // Objetos/arrays devem chegar ao banco serializados. A conversao aqui
+    // evita valores incompatíveis com o protocolo de prepared statements.
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+
+  // MySQL/MariaDB DATETIME aceita "YYYY-MM-DD HH:mm:ss". Os formularios do
+  // projeto utilizam ISO/datetime-local, entao normalizamos sem alterar textos comuns.
+  const localDateTime = value.match(
+    /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::(\d{2}))?$/,
+  );
+  if (localDateTime) {
+    return `${localDateTime[1]} ${localDateTime[2]}:${localDateTime[3] ?? "00"}`;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(value)) {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+
+  return value;
 }
+
 function normalizeValue(value: unknown): unknown {
   if (value instanceof Date) return value.toISOString();
   return value;
@@ -141,8 +158,8 @@ async function executeOn<T = SqlRow>(
   query: string,
   params: unknown[],
 ): Promise<SqlResult<T>> {
-  const values: SqlBindValue[] = params.map(normalizeParameter);
-  const [raw] = await executor.execute(query, values as any);
+  const values = params.map(normalizeParameter);
+  const [raw] = await executor.execute(query, values);
 
   if (Array.isArray(raw)) {
     const results = normalizeRows<T>(raw as RowDataPacket[]);
@@ -230,6 +247,3 @@ export function sqlDatabase() {
   compat ??= new SqlDatabaseCompat();
   return compat;
 }
-
-
-

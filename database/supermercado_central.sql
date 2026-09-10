@@ -301,6 +301,11 @@ CREATE TABLE IF NOT EXISTS staff (
   name VARCHAR(255) NOT NULL DEFAULT '',
   role VARCHAR(40) NOT NULL DEFAULT 'manager',
   permissions_json TEXT NOT NULL,
+  password_hash VARCHAR(128) NOT NULL DEFAULT '',
+  password_salt VARCHAR(64) NOT NULL DEFAULT '',
+  password_updated_at DATETIME NULL,
+  totp_secret_enc VARCHAR(512) NOT NULL DEFAULT '',
+  totp_enabled TINYINT(1) NOT NULL DEFAULT 0,
   mfa_required TINYINT(1) NOT NULL DEFAULT 1,
   active TINYINT(1) NOT NULL DEFAULT 1,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -335,6 +340,16 @@ CREATE TABLE IF NOT EXISTS admin_approvals (
   PRIMARY KEY (id),
   KEY admin_approvals_status_idx (status, created_at),
   KEY admin_approvals_requester_idx (requested_by, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS admin_login_attempts (
+  subject_hash VARCHAR(64) NOT NULL,
+  attempts INT NOT NULL DEFAULT 0,
+  first_attempt_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  locked_until DATETIME NULL,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (subject_hash),
+  KEY admin_login_attempts_locked_idx (locked_until)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS admin_devices (

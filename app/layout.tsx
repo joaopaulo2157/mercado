@@ -1,10 +1,9 @@
 import type { Metadata, Viewport } from "next";
+import { publicSiteUrl } from "@/lib/site-url";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    "https://supermercado-central.joaopaulo2009.chatgpt.site",
-  ),
+  metadataBase: new URL(publicSiteUrl()),
   title: {
     default: "Supermercado Central | Economia perto de você",
     template: "%s | Supermercado Central",
@@ -14,21 +13,11 @@ export const metadata: Metadata = {
   icons: { icon: "/assets/logo-central-vertical.png" },
   manifest: "/manifest.webmanifest",
   applicationName: "Supermercado Central",
-  keywords: [
-    "supermercado",
-    "ofertas",
-    "compras online",
-    "entrega",
-    "WhatsApp",
-  ],
+  keywords: ["supermercado", "ofertas", "compras online", "entrega", "WhatsApp"],
   category: "shopping",
   authors: [{ name: "Supermercado Central" }],
   creator: "Supermercado Central",
-  formatDetection: {
-    telephone: true,
-    address: false,
-    email: false,
-  },
+  formatDetection: { telephone: true, address: false, email: false },
   robots: { index: true, follow: true },
   openGraph: {
     title: "Supermercado Central",
@@ -46,19 +35,18 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Supermercado Central",
-    description:
-      "Economia perto de você. Monte seu carrinho e finalize pelo WhatsApp.",
+    description: "Economia perto de você. Monte seu carrinho e finalize pelo WhatsApp.",
     images: ["/og.png"],
   },
 };
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: "#0756d9",
 };
-export default function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR">
       <body>{children}</body>

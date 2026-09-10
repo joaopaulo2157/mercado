@@ -1,9 +1,9 @@
 {
   "name": "supermercado-central",
-  "version": "0.1.0",
+  "version": "0.5.2",
   "private": true,
   "engines": {
-    "node": "22.x"
+    "node": ">=22 <27"
   },
   "scripts": {
     "install:ci": "npm install --no-audit --no-fund",
@@ -38,5 +38,10 @@
     "typescript": "5.9.3"
   },
   "type": "module",
-  "displayName": "Supermercado Central"
+  "displayName": "Supermercado Central",
+  "allowScripts": {
+    "esbuild": true,
+    "sharp": true,
+    "unrs-resolver": true
+  }
 }

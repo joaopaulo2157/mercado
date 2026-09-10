@@ -1,0 +1,26 @@
+SC SUPERMERCADO CENTRAL V5 - RELATORIO DE VALIDACAO
+
+Validacoes executadas nesta geracao:
+- 64 arquivos TypeScript/TSX analisados por parser/transpilador: 0 erros de sintaxe.
+- 19 arquivos CSS analisados por parser CSS: 0 erros de parsing.
+- public/sw.js validado pelo parser do Node.js: OK.
+- TOTP: geracao e validacao de codigo de 6 digitos: OK.
+- Senhas da equipe: scrypt + salt + verificacao: OK.
+- Segredo TOTP: criptografia/descriptografia AES-256-GCM: OK.
+- Busca: "aroz" encontra "Arroz": OK.
+- Busca: normalizacao de acentos: OK.
+- Varredura do dominio legado fora de /legacy: nenhuma ocorrencia.
+
+Observacao:
+O pacote nao inclui node_modules. A instalacao completa das dependencias nao
+foi concluida no ambiente de geracao por indisponibilidade/timeout do download
+do npm. Por isso, o build Next.js completo deve ser validado no computador ou
+na Vercel apos instalar as dependencias. O arquivo PREPARAR_PROJETO_V5.bat
+executa npm install, typecheck e build em sequencia e interrompe em qualquer erro.
+
+
+V5.0.1 - CORRECAO
+- Corrigido TS2769 em lib/sql-database.ts causado pela tipagem ExecuteValues do mysql2 >= 3.24.
+- Valores SQL preparados agora são restringidos a tipos aceitos pelo driver.
+- Node 26 incluído na faixa local suportada pelo package.json.
+- allowScripts configurado explicitamente para esbuild, sharp e unrs-resolver no npm 12.

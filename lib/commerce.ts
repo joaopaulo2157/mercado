@@ -100,6 +100,39 @@ export const substitutionLabel = (value: ItemSubstitution) =>
       ? "Não substituir"
       : "Confirmar antes";
 
+const oneEditApart = (left: string, right: string) => {
+  if (left === right) return true;
+  if (Math.abs(left.length - right.length) > 1) return false;
+  let i = 0;
+  let j = 0;
+  let edits = 0;
+  while (i < left.length && j < right.length) {
+    if (left[i] === right[j]) {
+      i += 1;
+      j += 1;
+      continue;
+    }
+    edits += 1;
+    if (edits > 1) return false;
+    if (left.length > right.length) i += 1;
+    else if (right.length > left.length) j += 1;
+    else {
+      i += 1;
+      j += 1;
+    }
+  }
+  if (i < left.length || j < right.length) edits += 1;
+  return edits <= 1;
+};
+
+const fuzzyTermMatch = (term: string, words: string[], searchable: string) => {
+  if (searchable.includes(term)) return true;
+  if (term.length < 4) return false;
+  return words.some((word) =>
+    word.startsWith(term) || oneEditApart(term, word),
+  );
+};
+
 export const productSearchScore = (product: Product, query: string) => {
   const normalized = normalizeSearch(query);
   if (!normalized) return 1;
@@ -118,13 +151,15 @@ export const productSearchScore = (product: Product, query: string) => {
       ...product.options.flatMap((option) => [option.label, option.barcode]),
     ].join(" "),
   );
-  if (!terms.every((term) => searchable.includes(term))) return 0;
+  const words = searchable.split(" ").filter(Boolean);
+  if (!terms.every((term) => fuzzyTermMatch(term, words, searchable))) return 0;
   return terms.reduce((score, term) => {
     if (name === term) return score + 100;
     if (name.startsWith(term)) return score + 55;
     if (name.includes(term)) return score + 35;
     if (brand.startsWith(term)) return score + 22;
     if (category.includes(term)) return score + 12;
+    if (words.some((word) => oneEditApart(term, word))) return score + 9;
     return score + 5;
   }, product.featured ? 8 : 0);
 };

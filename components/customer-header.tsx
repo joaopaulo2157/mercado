@@ -11,7 +11,6 @@ export default function CustomerHeader() {
           width={230}
           height={86}
           priority
-          unoptimized
         />
       </Link>
       <nav>

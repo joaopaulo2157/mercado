@@ -288,6 +288,11 @@ export const staff = mysqlTable("staff", {
   name: shortText("name").notNull().default(""),
   role: varchar("role", { length: 40 }).notNull().default("manager"),
   permissionsJson: text("permissions_json").notNull(),
+  passwordHash: varchar("password_hash", { length: 128 }).notNull().default(""),
+  passwordSalt: varchar("password_salt", { length: 64 }).notNull().default(""),
+  passwordUpdatedAt: dateTime("password_updated_at"),
+  totpSecretEnc: varchar("totp_secret_enc", { length: 512 }).notNull().default(""),
+  totpEnabled: boolean("totp_enabled").notNull().default(false),
   mfaRequired: boolean("mfa_required").notNull().default(true),
   active: boolean("active").notNull().default(true),
   createdAt: createdAt(),
@@ -323,6 +328,18 @@ export const adminApprovals = mysqlTable(
     index("admin_approvals_status_idx").on(table.status, table.createdAt),
     index("admin_approvals_requester_idx").on(table.requestedBy, table.createdAt),
   ],
+);
+
+export const adminLoginAttempts = mysqlTable(
+  "admin_login_attempts",
+  {
+    subjectHash: varchar("subject_hash", { length: 64 }).primaryKey(),
+    attempts: int("attempts").notNull().default(0),
+    firstAttemptAt: timestamp("first_attempt_at", { mode: "string" }).notNull().defaultNow(),
+    lockedUntil: dateTime("locked_until"),
+    updatedAt: updatedAt(),
+  },
+  (table) => [index("admin_login_attempts_locked_idx").on(table.lockedUntil)],
 );
 
 export const adminDevices = mysqlTable(

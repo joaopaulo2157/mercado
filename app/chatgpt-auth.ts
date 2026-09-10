@@ -24,12 +24,10 @@ type SessionPayload = {
   exp: number;
 };
 
-export const adminAuthMode = () => {
-  const mode = String(process.env.AUTH_MODE || "local")
+const authMode = () =>
+  String(process.env.AUTH_MODE || "local")
     .trim()
     .toLowerCase();
-  return mode === "chatgpt" ? "chatgpt" : "local";
-};
 
 export function configuredAdminEmails() {
   return String(process.env.ADMIN_EMAILS || "")
@@ -84,7 +82,6 @@ export function verifyAdminSessionToken(token: string): SessionPayload | null {
     const email = String(payload.email || "").trim().toLowerCase();
     if (!email || !Number.isFinite(payload.exp) || payload.exp <= Date.now())
       return null;
-    if (!configuredAdminEmails().includes(email)) return null;
     return { email, exp: payload.exp };
   } catch {
     return null;
@@ -103,10 +100,7 @@ export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
   // Mantém compatibilidade com o ambiente ChatGPT/Sites quando esses cabeçalhos
   // forem injetados pelo provedor.
   const requestHeaders = await headers();
-  const emailFromHeader =
-    adminAuthMode() === "chatgpt"
-      ? requestHeaders.get(USER_EMAIL_HEADER)
-      : null;
+  const emailFromHeader = requestHeaders.get(USER_EMAIL_HEADER);
   if (emailFromHeader) {
     const encodedFullName = requestHeaders.get(USER_FULL_NAME_HEADER);
     const fullName =
@@ -143,14 +137,14 @@ export async function requireChatGPTUser(
 
 export function chatGPTSignInPath(returnTo: string): string {
   const safeReturnTo = safeRelativeReturnPath(returnTo);
-  if (adminAuthMode() === "chatgpt")
+  if (authMode() === "chatgpt")
     return `${CHATGPT_SIGN_IN_PATH}?return_to=${encodeURIComponent(safeReturnTo)}`;
   return `/admin/login?return_to=${encodeURIComponent(safeReturnTo)}`;
 }
 
 export function chatGPTSignOutPath(returnTo = "/"): string {
   const safeReturnTo = safeRelativeReturnPath(returnTo);
-  if (adminAuthMode() === "chatgpt")
+  if (authMode() === "chatgpt")
     return `${CHATGPT_SIGN_OUT_PATH}?return_to=${encodeURIComponent(safeReturnTo)}`;
   return `/api/admin/session?logout=1&return_to=${encodeURIComponent(safeReturnTo)}`;
 }

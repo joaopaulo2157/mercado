@@ -34,7 +34,7 @@ export default async function AdminPage() {
           </h1>
           <p>
             {configured
-              ? `A conta ${user.email} não está na lista de administradores.`
+              ? `A conta ${user.email} não possui acesso administrativo ativo.`
               : "Cadastre o e-mail autorizado nas configurações seguras do projeto para liberar este painel."}
           </p>
           <div>

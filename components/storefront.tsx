@@ -48,6 +48,7 @@ import {
 const loadMotionFeatures = () =>
   import("@/components/motion-features").then((module) => module.default);
 const PixQr = dynamic(() => import("@/components/pix-qr"), { ssr: false });
+const externalImage = (src: string) => /^https?:\/\//i.test(src);
 
 type OrderSuccess = {
   orderNumber: string;
@@ -402,7 +403,7 @@ export default function Storefront({
     setCategory(nextCategory);
     setShowFavorites(false);
     setMenuOpen(false);
-    document.getElementById("ofertas")?.scrollIntoView({ behavior: "smooth" });
+    document.getElementById("catalogo")?.scrollIntoView({ behavior: "smooth" });
     if (focusSearch)
       window.setTimeout(() => catalogSearchRef.current?.focus(), 520);
   };
@@ -464,30 +465,34 @@ export default function Storefront({
       } catch {}
       setLoaded(true);
     });
-    fetch("/api/catalog")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.products?.length) {
-          setCatalog(data);
-          const previous = localStorage.getItem("sc-last-announcement");
-          if (
-            previous &&
-            previous !== data.settings?.announcement &&
-            "Notification" in window &&
-            Notification.permission === "granted"
-          )
-            new Notification("Nova oferta no Supermercado Central", {
-              body: data.settings.announcement,
-              icon: "/assets/logo-central-vertical.png",
-            });
-          if (data.settings?.announcement)
-            localStorage.setItem(
-              "sc-last-announcement",
-              data.settings.announcement,
-            );
-        }
-      })
-      .catch(() => {});
+    const refreshCatalog = () => {
+      fetch("/api/catalog", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.products?.length) {
+            setCatalog(data);
+            const previous = localStorage.getItem("sc-last-announcement");
+            if (
+              previous &&
+              previous !== data.settings?.announcement &&
+              "Notification" in window &&
+              Notification.permission === "granted"
+            )
+              new Notification("Nova oferta no Supermercado Central", {
+                body: data.settings.announcement,
+                icon: "/icons/icon-192.png",
+              });
+            if (data.settings?.announcement)
+              localStorage.setItem(
+                "sc-last-announcement",
+                data.settings.announcement,
+              );
+          }
+        })
+        .catch(() => {});
+    };
+    const catalogTimer = window.setInterval(refreshCatalog, 120_000);
+    window.addEventListener("focus", refreshCatalog);
     fetch("/api/reviews")
       .then((response) => response.json())
       .then((items) => Array.isArray(items) && setReviews(items))
@@ -538,6 +543,8 @@ export default function Storefront({
     window.addEventListener("beforeinstallprompt", install);
     return () => {
       window.removeEventListener("beforeinstallprompt", install);
+      window.removeEventListener("focus", refreshCatalog);
+      window.clearInterval(catalogTimer);
       observer.disconnect();
     };
   }, [initialCatalog.settings.abandonedCartHours]);
@@ -627,6 +634,16 @@ export default function Storefront({
       ...new Map(candidates.map((product) => [product.id, product])).values(),
     ].slice(0, 3);
   }, [catalog.products]);
+  const homeHighlights = useMemo(() => {
+    return [...catalog.products]
+      .sort((a, b) => {
+        const aOffer = Number(Boolean(a.oldPriceCents || a.options.some((option) => option.oldPriceCents)));
+        const bOffer = Number(Boolean(b.oldPriceCents || b.options.some((option) => option.oldPriceCents)));
+        return bOffer - aOffer || Number(b.featured) - Number(a.featured) || b.stockQuantity - a.stockQuantity;
+      })
+      .slice(0, 6);
+  }, [catalog.products]);
+
   const recommendations = useMemo(() => {
     const signals = [
       ...Object.keys(cart),
@@ -991,6 +1008,11 @@ export default function Storefront({
     title: "Até 30% OFF",
     subtitle: "Ofertas da semana",
   }) as Banner;
+  const offersHref = catalog.products.some(
+    (product) => product.oldPriceCents || product.options.some((option) => option.oldPriceCents),
+  )
+    ? "#ofertas"
+    : "#catalogo";
   const whatsappContactUrl = `https://wa.me/${catalog.settings.whatsapp}`;
   const contactPhone =
     catalog.settings.phone || `+${catalog.settings.whatsapp}`;
@@ -1007,9 +1029,9 @@ export default function Storefront({
         />
         <div className="promo-bar">
           <span>⚡ {catalog.settings.announcement}</span>
-          <p>Economize hoje em produtos selecionados</p>
-          <a href="#ofertas">
-            Ver ofertas <Icon name="arrow" size={15} />
+          <p>Entrega e retirada • {catalog.settings.hours}</p>
+          <a href={offersHref}>
+            Ofertas de hoje <Icon name="arrow" size={15} />
           </a>
         </div>
         <AnimatePresence>
@@ -1054,7 +1076,6 @@ export default function Storefront({
               width={310}
               height={115}
               priority
-              unoptimized
             />
           </Link>
           <nav
@@ -1062,7 +1083,7 @@ export default function Storefront({
             aria-label="Navegação principal"
           >
             <a
-              href="#ofertas"
+              href={offersHref}
               className={activeSection === "ofertas" ? "active" : ""}
               onClick={() => setMenuOpen(false)}
             >
@@ -1247,22 +1268,29 @@ export default function Storefront({
             >
               <m.a
                 className="primary-btn"
-                href="#ofertas"
+                href={offersHref}
                 whileHover={reduceMotion ? undefined : { y: -4, scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
               >
-                Comprar agora <Icon name="arrow" size={18} />
+                Ver ofertas de hoje <Icon name="arrow" size={18} />
               </m.a>
               <m.button
                 className="secondary-btn"
-                onClick={lastOrder?.cart ? repeatLastOrder : install}
-                whileHover={reduceMotion ? undefined : { y: -4 }}
+                onClick={
+                  lastOrder?.cart
+                    ? repeatLastOrder
+                    : () =>
+                        document
+                          .getElementById("setores")
+                          ?.scrollIntoView({ behavior: "smooth" })
+                }
+                whileHover={reduceMotion ? undefined : { y: -3 }}
                 whileTap={{ scale: 0.97 }}
               >
-                <Icon name={lastOrder?.cart ? "clock" : "spark"} size={19} />{" "}
+                <Icon name={lastOrder?.cart ? "clock" : "grid"} size={19} />{" "}
                 {lastOrder?.cart
                   ? "Repetir última compra"
-                  : "Instalar aplicativo"}
+                  : "Explorar setores"}
               </m.button>
             </m.div>
             <m.div
@@ -1285,7 +1313,7 @@ export default function Storefront({
               )}
             </m.div>
             <m.a
-              href="#setores"
+              href={offersHref}
               className="scroll-cue"
               animate={reduceMotion ? undefined : { y: [0, 7, 0] }}
               transition={{
@@ -1303,6 +1331,13 @@ export default function Storefront({
             reduceMotion={Boolean(reduceMotion)}
           />
         </section>
+        <FlashOffers
+          title={catalog.settings.flashOfferTitle}
+          products={catalog.products}
+          reduceMotion={Boolean(reduceMotion)}
+          onAdd={add}
+          onView={view}
+        />
         <m.section
           className="benefits"
           id="facilidades"
@@ -1347,23 +1382,54 @@ export default function Storefront({
           viewport={{ once: true, amount: 0.25 }}
           transition={{ duration: 0.65 }}
         >
-          <div className="section-kicker">Explore por setor</div>
+          <div className="department-heading">
+            <div>
+              <div className="section-kicker">Explore por setor</div>
+              <h2>Encontre o que precisa sem perder tempo.</h2>
+            </div>
+            <p>Escolha um setor e vá direto aos produtos da sua lista.</p>
+          </div>
           <div className="department-track">
-            {catalog.categories.map((c) => (
-              <m.button
-                key={c.id}
-                onClick={() => goToCatalog(c.id)}
-                whileHover={reduceMotion ? undefined : { y: -7, scale: 1.025 }}
-                whileTap={{ scale: 0.96 }}
-              >
-                <span>{c.icon}</span>
-                <b>{c.name}</b>
-                <small>Ver produtos</small>
-              </m.button>
-            ))}
+            {catalog.categories.map((c) => {
+              const visualProduct = catalog.products.find(
+                (product) => product.categoryId === c.id && product.imageUrl,
+              );
+              return (
+                <m.button
+                  key={c.id}
+                  onClick={() => goToCatalog(c.id)}
+                  whileHover={reduceMotion ? undefined : { y: -4 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  <span className="department-photo">
+                    {visualProduct ? (
+                      <Image
+                        src={visualProduct.imageUrl}
+                        alt=""
+                        fill
+                        sizes="150px"
+                        unoptimized={externalImage(visualProduct.imageUrl)}
+                      />
+                    ) : (
+                      <i>{c.icon}</i>
+                    )}
+                  </span>
+                  <span className="department-copy">
+                    <b>{c.name}</b>
+                    <small>Ver produtos</small>
+                  </span>
+                </m.button>
+              );
+            })}
           </div>
         </m.section>
-        <section className="shop-section" id="ofertas">
+        <HomeHighlights
+          products={homeHighlights}
+          reduceMotion={Boolean(reduceMotion)}
+          onAdd={add}
+          onView={view}
+        />
+        <section className="shop-section" id="catalogo">
           <div className="section-heading">
             <div>
               <span className="eyebrow">
@@ -1479,13 +1545,6 @@ export default function Storefront({
             </div>
           )}
         </section>
-        <FlashOffers
-          title={catalog.settings.flashOfferTitle}
-          products={catalog.products}
-          reduceMotion={Boolean(reduceMotion)}
-          onAdd={add}
-          onView={view}
-        />
         {catalog.homeContent.flyerActive ? (
           <WeeklyFlyer
             content={catalog.homeContent}
@@ -1584,7 +1643,7 @@ export default function Storefront({
                       alt=""
                       width={64}
                       height={64}
-                      unoptimized
+                      unoptimized={externalImage(p!.imageUrl)}
                     />
                     <span>
                       <b>{p!.name}</b>
@@ -1813,7 +1872,6 @@ export default function Storefront({
                       width={1536}
                       height={1024}
                       sizes="(max-width:640px) 250px, 290px"
-                      unoptimized
                     />
                   </div>
                 </div>
@@ -1955,20 +2013,26 @@ export default function Storefront({
             {count > 0 ? <b>{count}</b> : null}
           </button>
         </nav>
-        <m.button
-          className="floating-cart"
-          onClick={() => setCartOpen(true)}
-          aria-label="Abrir carrinho"
-          data-cart-target
-          whileTap={{ scale: 0.9 }}
-          animate={
-            count > 0 && !reduceMotion ? { scale: [1, 1.08, 1] } : { scale: 1 }
-          }
-          transition={{ duration: 0.34 }}
-        >
-          <Icon name="cart" />
-          {count > 0 ? <b>{count}</b> : null}
-        </m.button>
+        {count > 0 ? (
+          <m.button
+            className="floating-cart"
+            onClick={() => setCartOpen(true)}
+            aria-label={`Abrir carrinho com ${count} ${count === 1 ? "item" : "itens"}`}
+            data-cart-target
+            whileTap={{ scale: 0.98 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28 }}
+          >
+            <Icon name="cart" />
+            <span className="floating-cart-copy">
+              <small>{count} {count === 1 ? "item" : "itens"}</small>
+              <strong>{money(subtotal)}</strong>
+            </span>
+            <em>Ver carrinho</em>
+            <b>{count}</b>
+          </m.button>
+        ) : null}
         <AnimatePresence>
           {cartOpen && (
             <>
@@ -2072,7 +2136,7 @@ export default function Storefront({
                                 alt=""
                                 fill
                                 sizes="72px"
-                                unoptimized
+                                unoptimized={externalImage(p.imageUrl)}
                               />
                             </div>
                             <div className="cart-item-copy">
@@ -2319,6 +2383,7 @@ function FlashOffers({
   const seconds = Math.floor((remaining % 60_000) / 1_000);
   return (
     <m.section
+      id="ofertas"
       className="flash-offers"
       initial={reduceMotion ? false : { opacity: 0, y: 34 }}
       whileInView={{ opacity: 1, y: 0 }}
@@ -2356,7 +2421,7 @@ function FlashOffers({
                 alt={product.name}
                 width={120}
                 height={110}
-                unoptimized
+                unoptimized={externalImage(product.imageUrl)}
               />
               <span>
                 <small>{product.categoryName}</small>
@@ -2386,6 +2451,84 @@ function FlashOffers({
             </m.button>
           </m.article>
         ))}
+      </div>
+    </m.section>
+  );
+}
+
+function HomeHighlights({
+  products,
+  reduceMotion,
+  onAdd,
+  onView,
+}: {
+  products: Product[];
+  reduceMotion: boolean;
+  onAdd: (product: Product) => void;
+  onView: (product: Product) => void;
+}) {
+  if (!products.length) return null;
+  return (
+    <m.section
+      className="home-highlights"
+      initial={reduceMotion ? false : { opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.2 }}
+    >
+      <div className="home-highlights-heading">
+        <div>
+          <span className="eyebrow">
+            <i /> Escolhas do Central
+          </span>
+          <h2>Destaques para colocar na sua lista.</h2>
+        </div>
+        <a href="#catalogo">
+          Ver catálogo completo <Icon name="arrow" size={16} />
+        </a>
+      </div>
+      <div className="home-highlights-grid">
+        {products.map((product) => {
+          const currentPrice = productPrice(product);
+          const previousPrice = productOldPrice(product);
+          const discount = previousPrice
+            ? Math.max(0, Math.round((1 - currentPrice / previousPrice) * 100))
+            : 0;
+          return (
+            <m.article
+              key={product.id}
+              whileHover={reduceMotion ? undefined : { y: -4 }}
+            >
+              <button
+                className="home-highlight-product"
+                onClick={() => onView(product)}
+              >
+                <span className="home-highlight-image">
+                  <Image
+                    src={product.imageUrl}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width:720px) 42vw, 190px"
+                    unoptimized={externalImage(product.imageUrl)}
+                  />
+                  {discount > 0 ? <i>-{discount}%</i> : null}
+                </span>
+                <span className="home-highlight-copy">
+                  <small>{product.categoryName}</small>
+                  <b>{product.name}</b>
+                  {previousPrice ? <del>{money(previousPrice)}</del> : null}
+                  <strong>{money(currentPrice)}</strong>
+                </span>
+              </button>
+              <button
+                className="home-highlight-add"
+                onClick={() => onAdd(product)}
+                aria-label={`Adicionar ${product.name} ao carrinho`}
+              >
+                <Icon name="plus" size={17} /> Adicionar
+              </button>
+            </m.article>
+          );
+        })}
       </div>
     </m.section>
   );
@@ -2429,7 +2572,7 @@ function RecommendationRail({
                 alt={product.name}
                 width={86}
                 height={86}
-                unoptimized
+                unoptimized={externalImage(product.imageUrl)}
               />
               <span>
                 <small>{product.categoryName}</small>
@@ -2553,7 +2696,7 @@ function WeeklyFlyer({
             alt={`Encarte promocional — ${content.flyerTitle}`}
             fill
             sizes="(max-width: 760px) 92vw, 44vw"
-            unoptimized
+            unoptimized={externalImage(content.flyerImageUrl)}
           />
         </m.div>
       ) : (
@@ -2577,7 +2720,7 @@ function WeeklyFlyer({
                     alt={product.name}
                     width={150}
                     height={136}
-                    unoptimized
+                    unoptimized={externalImage(product.imageUrl)}
                   />
                   <span>
                     <small>{product.categoryName}</small>
@@ -2680,7 +2823,7 @@ function InstitutionalGallery({
               alt={photo.alt}
               fill
               sizes="(max-width: 760px) 88vw, 28vw"
-              unoptimized
+              unoptimized={externalImage(photo.url)}
             />
             <figcaption>{photo.label}</figcaption>
           </m.figure>
@@ -2969,7 +3112,7 @@ function HeroMotionVisual({
               fill
               sizes="(max-width:900px) 90vw,48vw"
               priority={safeActiveSlide === 0}
-              unoptimized
+              unoptimized={externalImage(currentSlide.src)}
             />
           </m.div>
         </AnimatePresence>
@@ -3003,7 +3146,6 @@ function HeroMotionVisual({
             width={1536}
             height={1024}
             sizes="(max-width:640px) 210px, 320px"
-            unoptimized
           />
         </m.div>
         <m.div
@@ -3117,7 +3259,7 @@ function MotionSpotlight({
                 alt={current.name}
                 fill
                 sizes="(max-width:900px) 92vw,45vw"
-                unoptimized
+                unoptimized={externalImage(current.imageUrl)}
               />
               <div className="motion-stage-shade" />
               <span className="motion-stage-index">
@@ -3255,7 +3397,7 @@ function SearchSuggestions({
             alt=""
             width={44}
             height={44}
-            unoptimized
+            unoptimized={externalImage(product.imageUrl)}
           />
           <span>
             <b>{product.name}</b>
@@ -3326,10 +3468,15 @@ function ProductCard({
             alt={p.name}
             fill
             sizes="(max-width:720px) 50vw, (max-width:1180px) 33vw, 25vw"
-            unoptimized
+            unoptimized={externalImage(p.imageUrl)}
           />
         </button>
         {p.badge && <span className="badge">{p.badge}</span>}
+        {discount > 0 ? (
+          <span className="discount-badge" aria-label={`${discount}% de desconto`}>
+            -{discount}%
+          </span>
+        ) : null}
         <div className="card-actions">
           <button
             onClick={onFavorite}
@@ -3804,7 +3951,7 @@ function ProductQuickView({
             alt={p.name}
             fill
             sizes="(max-width:700px) 90vw,45vw"
-            unoptimized
+            unoptimized={externalImage(p.imageUrl)}
           />
           {p.badge && <span className="badge">{p.badge}</span>}
         </div>
