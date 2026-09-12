@@ -107,7 +107,7 @@ export async function POST(request: Request) {
     }
     const recentOrders = await db
       .prepare(
-        "SELECT COUNT(*) total FROM orders WHERE customer_phone=? AND created_at>=DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 10 MINUTE)",
+        "SELECT COUNT(*) total FROM orders WHERE customer_phone=? AND created_at>=CURRENT_TIMESTAMP - INTERVAL '10 minutes'",
       )
       .bind(customerPhone)
       .first<{ total: number }>();
@@ -326,7 +326,7 @@ export async function POST(request: Request) {
     }
     const result = await db
       .prepare(
-        "INSERT INTO orders(order_number,request_key,status,tracking_token,review_token,customer_name,customer_phone,postal_code,city,state,delivery_type,address,neighborhood,reference,payment_method,change_for_cents,scheduled_for,notes,substitution,coupon_code,subtotal_cents,discount_cents,delivery_fee_cents,total_cents,cost_total_cents,loyalty_points_earned,referral_code,item_count) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO orders(order_number,request_key,status,tracking_token,review_token,customer_name,customer_phone,postal_code,city,state,delivery_type,address,neighborhood,reference,payment_method,change_for_cents,scheduled_for,notes,substitution,coupon_code,subtotal_cents,discount_cents,delivery_fee_cents,total_cents,cost_total_cents,loyalty_points_earned,referral_code,item_count) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id",
       )
       .bind(
         orderNumber,
@@ -401,7 +401,7 @@ export async function POST(request: Request) {
       : referral();
     await db
       .prepare(
-        "INSERT INTO customers(phone,name,points,lifetime_value_cents,order_count,referral_code,referred_by) VALUES(?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE name=VALUES(name),lifetime_value_cents=customers.lifetime_value_cents+VALUES(lifetime_value_cents),order_count=customers.order_count+1,referred_by=CASE WHEN customers.referred_by='' THEN VALUES(referred_by) ELSE customers.referred_by END,updated_at=CURRENT_TIMESTAMP",
+        "INSERT INTO customers(phone,name,points,lifetime_value_cents,order_count,referral_code,referred_by) VALUES(?,?,?,?,?,?,?) ON CONFLICT (phone) DO UPDATE SET name=EXCLUDED.name,lifetime_value_cents=customers.lifetime_value_cents+EXCLUDED.lifetime_value_cents,order_count=customers.order_count+1,referred_by=CASE WHEN customers.referred_by='' THEN EXCLUDED.referred_by ELSE customers.referred_by END,updated_at=CURRENT_TIMESTAMP",
       )
       .bind(
         customerPhone,

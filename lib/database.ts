@@ -14,7 +14,7 @@ import { parseProductOptions } from "./commerce";
 type SqlRow = Record<string, unknown>;
 /**
  * Compatibilidade com a antiga API D1. As rotas existentes continuam usando
- * database().prepare().bind().all()/first()/run(), mas o motor agora é MySQL/MariaDB.
+ * database().prepare().bind().all()/first()/run(), mas o motor agora é PostgreSQL/Supabase.
  */
 export function database() {
   return sqlDatabase();

@@ -1,0 +1,54 @@
+SC SUPERMERCADO CENTRAL V6 - RELATORIO DE VALIDACAO
+======================================================
+
+ARQUITETURA
+- GitHub: codigo-fonte oficial.
+- Supabase: PostgreSQL oficial.
+- Vercel: hospedagem/deploy Next.js.
+- Railway removido da arquitetura da V6.
+- MySQL/MariaDB removido do runtime.
+
+SUPABASE CONFIRMADO
+- Projeto: sc-central-supermercado
+- Project ref: krjpecwpmjxqwcvrvxmk
+- Regiao: sa-east-1 (Sao Paulo)
+- Estado verificado: ACTIVE_HEALTHY
+- Estrutura ja existente: produtos, categorias, pedidos, itens, clientes, estoque, cupons, banners, configuracoes, equipe, auditoria e demais tabelas do sistema.
+- Migracao admin_sessions_without_mfa aplicada com sucesso.
+- admin_sessions e admin_login_attempts criadas/garantidas.
+- security_settings.require_mfa definido como 0.
+
+DADOS EXISTENTES NO MOMENTO DA VALIDACAO
+- Produtos: 10
+- Categorias: 7
+- Banners: 1
+- Regioes de entrega: 2
+- Configuracao da loja: 1
+- Pedidos: 0
+- Clientes: 0
+- Equipe/admin: 0
+
+LOGIN ADMINISTRATIVO V6
+- Somente e-mail + senha.
+- Campo e fluxo 2FA/TOTP removidos da interface e das rotas ativas.
+- Nao usa ADMIN_EMAILS, ADMIN_PASSWORD ou ADMIN_SESSION_SECRET.
+- Primeiro administrador criado em /admin/setup.
+- Depois do primeiro cadastro, /admin/setup deixa de permitir nova conta proprietaria.
+- Sessoes usam token aleatorio em cookie HttpOnly; o Supabase guarda apenas o hash SHA-256 do token.
+- Protecao contra tentativas repetidas de login persistida no Supabase.
+
+VALIDACOES DE CODIGO
+- 59 arquivos TypeScript/TSX ativos analisados por transpile: 0 erros de sintaxe.
+- Busca no codigo ativo: 0 usos de mysql2/mysql://.
+- Busca no codigo ativo: 0 ON DUPLICATE KEY, DATE_SUB, DATE_ADD ou SHOW COLUMNS.
+- Consultas PostgreSQL criticas validadas no schema real do Supabase via PREPARE/DEALLOCATE: produtos, categorias, regioes, cupons, banners, pedidos, clientes, equipe, listas, backups, dispositivos e seguranca.
+- Insercao de pedidos validada com RETURNING id.
+- Upserts validados com ON CONFLICT.
+- Supabase Security Advisor: 0 alertas.
+- Supabase Performance Advisor: sem alertas de erro; apenas indices ainda nao utilizados (INFO), esperado em uma base com poucos dados/pedidos.
+- Indice duplicado de admin_sessions identificado e removido antes da entrega.
+
+OBSERVACAO DE BUILD
+- O npm install completo neste ambiente de trabalho excedeu o limite de rede/tempo, portanto o next build completo nao foi concluido aqui.
+- O pacote inclui PREPARAR_V6_SUPABASE_VERCEL.bat para executar npm install, typecheck e next build no Windows antes da publicacao.
+- A propria Vercel tambem executara o build de producao no deploy.

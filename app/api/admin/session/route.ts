@@ -1,25 +1,24 @@
 import {
   ADMIN_SESSION_COOKIE,
-  configuredAdminEmails,
   createAdminSessionToken,
+  deleteAdminSessionToken,
   safeRelativeReturnPath,
-  verifyAdminPassword,
 } from "@/app/chatgpt-auth";
+import { adminIsConfigured } from "@/lib/admin-auth";
 import {
   adminLoginStatus,
   clearAdminLoginFailures,
   registerFailedAdminLogin,
 } from "@/lib/admin-login-security";
-import { NextResponse } from "next/server";
-import { database } from "@/lib/database";
 import { verifyAdminPasswordHash } from "@/lib/admin-password";
-import { adminTotpConfigured, verifyAdminTotp, verifyTotp } from "@/lib/totp";
-import { decryptTotpSecret } from "@/lib/admin-mfa";
+import { database } from "@/lib/database";
 import { ensureV5SecuritySchema } from "@/lib/v5-schema";
+import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-function clearSession(response: NextResponse) {
+function clearSessionCookie(response: NextResponse) {
   response.cookies.set(ADMIN_SESSION_COOKIE, "", {
     httpOnly: true,
     sameSite: "strict",
@@ -40,8 +39,12 @@ function redirectLoginFailure(request: Request, returnTo: string, email: string,
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const returnTo = safeRelativeReturnPath(url.searchParams.get("return_to") || "/");
+  if (url.searchParams.get("logout") === "1") {
+    const token = (await cookies()).get(ADMIN_SESSION_COOKIE)?.value || "";
+    await deleteAdminSessionToken(token);
+  }
   const response = NextResponse.redirect(new URL(returnTo, request.url), 303);
-  if (url.searchParams.get("logout") === "1") clearSession(response);
+  clearSessionCookie(response);
   return response;
 }
 
@@ -56,14 +59,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Origem não permitida" }, { status: 403 });
   }
 
+  if (!(await ensureV5SecuritySchema()))
+    return NextResponse.json({ error: "Banco de segurança indisponível" }, { status: 503 });
+
+  if (!(await adminIsConfigured())) {
+    return NextResponse.redirect(new URL("/admin/setup", request.url), 303);
+  }
+
   const contentLength = Number(request.headers.get("content-length") || 0);
   if (contentLength > 16_384)
     return NextResponse.json({ error: "Requisição inválida" }, { status: 413 });
 
   const form = await request.formData();
   const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 255);
-  const password = String(form.get("password") || "").slice(0, 512);
-  const totp = String(form.get("totp") || "");
+  const password = String(form.get("password") || "").slice(0, 256);
   const returnTo = safeRelativeReturnPath(String(form.get("returnTo") || "/admin"));
 
   const rate = await adminLoginStatus(email || "unknown", request);
@@ -73,70 +82,37 @@ export async function POST(request: Request) {
     return response;
   }
 
-  const ownerAuthenticated =
-    configuredAdminEmails().includes(email) && verifyAdminPassword(password);
-  let staffAuthenticated = false;
-  let staffMfaSecret = "";
-  let staffMfaRequired = false;
-  let staffMfaMissing = false;
-  if (!ownerAuthenticated && email) {
-    try {
-      await ensureV5SecuritySchema();
-      const staff = await database()
+  const staff = email
+    ? await database()
         .prepare(
-          "SELECT password_hash,password_salt,mfa_required,totp_enabled,totp_secret_enc,(SELECT require_mfa FROM security_settings WHERE id=1) AS global_mfa FROM staff WHERE lower(email)=? AND active=1 LIMIT 1",
+          "SELECT id,email,name,password_hash,password_salt FROM staff WHERE lower(email)=? AND active=1 LIMIT 1",
         )
         .bind(email)
         .first<{
+          id: string;
+          email: string;
+          name: string;
           password_hash: string;
           password_salt: string;
-          mfa_required: number;
-          totp_enabled: number;
-          totp_secret_enc: string;
-          global_mfa: number;
-        }>();
-      staffAuthenticated = Boolean(
-        staff &&
-          verifyAdminPasswordHash(
-            password,
-            String(staff.password_salt || ""),
-            String(staff.password_hash || ""),
-          ),
-      );
-      if (staffAuthenticated && staff) {
-        const policyRequiresMfa =
-          Number(staff.mfa_required || 0) === 1 || Number(staff.global_mfa || 0) === 1;
-        const hasMfa =
-          Number(staff.totp_enabled || 0) === 1 && Boolean(staff.totp_secret_enc);
-        staffMfaMissing = policyRequiresMfa && !hasMfa;
-        staffMfaRequired = policyRequiresMfa && hasMfa;
-        if (staffMfaRequired)
-          staffMfaSecret = decryptTotpSecret(String(staff.totp_secret_enc || ""));
-      }
-    } catch (error) {
-      console.warn("staff-local-login-unavailable", error);
-    }
-  }
+        }>()
+    : null;
 
-  if (!ownerAuthenticated && !staffAuthenticated) {
+  const authenticated = Boolean(
+    staff &&
+      verifyAdminPasswordHash(
+        password,
+        String(staff.password_salt || ""),
+        String(staff.password_hash || ""),
+      ),
+  );
+
+  if (!authenticated || !staff) {
     await registerFailedAdminLogin(email || "unknown", request);
     return redirectLoginFailure(request, returnTo, email, "invalid");
   }
 
-  if (staffAuthenticated && staffMfaMissing) {
-    return redirectLoginFailure(request, returnTo, email, "mfa_setup");
-  }
-  if (ownerAuthenticated && adminTotpConfigured() && !verifyAdminTotp(totp)) {
-    await registerFailedAdminLogin(email || "unknown", request);
-    return redirectLoginFailure(request, returnTo, email, "mfa");
-  }
-  if (staffAuthenticated && staffMfaRequired && !verifyTotp(staffMfaSecret, totp)) {
-    await registerFailedAdminLogin(email || "unknown", request);
-    return redirectLoginFailure(request, returnTo, email, "mfa");
-  }
-
   await clearAdminLoginFailures(email, request);
-  const token = createAdminSessionToken(email);
+  const token = await createAdminSessionToken(email, String(staff.id));
   const response = NextResponse.redirect(new URL(returnTo, request.url), 303);
   response.cookies.set(ADMIN_SESSION_COOKIE, token, {
     httpOnly: true,

@@ -1,185 +1,84 @@
-# SC Supermercado Central — V5.1 Home Premium
+# SC Supermercado Central — V6 Supabase + Vercel
 
-Aplicação completa do **Supermercado Central** em **Next.js 16 + MySQL/MariaDB**, com vitrine responsiva, carrinho, checkout, pedido registrado no banco antes da abertura do WhatsApp, acompanhamento de pedidos e painel administrativo por níveis de acesso.
+Aplicação completa do **SC Supermercado Central** em **Next.js 16**, usando a arquitetura oficial:
 
-## V5.1 — Home Premium
+**GitHub → Vercel → Supabase PostgreSQL**
 
-A V5.1 mantém integralmente a segurança, o banco, o painel administrativo e o fluxo de pedidos da V5.0.1. A atualização é focada na **experiência visual e comercial da página principal**:
+## Arquitetura
 
-- ofertas especiais passam a aparecer logo após o hero;
-- hero com CTA principal direcionado às ofertas do dia;
-- segundo CTA direciona aos setores ou repete a última compra;
-- setores passam a usar imagens reais dos produtos do próprio catálogo;
-- nova faixa de destaques antes do catálogo completo;
-- cards de produtos com hierarquia visual mais forte e selo automático de desconto;
-- catálogo mais limpo, com imagens maiores e botão de adicionar mais evidente;
-- barra de carrinho no celular mostra quantidade, subtotal e acesso direto ao carrinho;
-- refinamento de espaçamento, sombras e movimento para reduzir ruído visual;
-- ordem da home prioriza impacto, economia, descoberta e compra.
+- **GitHub**: código-fonte e histórico oficial.
+- **Vercel**: build, hospedagem e funções Next.js.
+- **Supabase**: banco PostgreSQL oficial do sistema.
+- **WhatsApp**: finalização comercial do pedido, mantendo o pedido registrado no banco antes da abertura do WhatsApp.
 
-A lógica do painel administrativo não foi alterada nesta etapa.
+O Railway e o MySQL/MariaDB não são mais necessários nesta versão.
 
+## Login administrativo simplificado
 
-## Principais evoluções da V5
+O painel usa somente **e-mail + senha**. O 2FA foi removido conforme solicitado.
 
-### Segurança administrativa
+Também foram removidas as antigas dependências de:
 
-- contas individuais para membros da equipe;
-- senha própria por funcionário usando **scrypt + salt individual**;
-- senha proprietária mantida em variável de ambiente;
-- **2FA TOTP real** para funcionários, com geração de QR Code no painel;
-- segredo TOTP armazenado criptografado com **AES-256-GCM** usando `ADMIN_SESSION_SECRET`;
-- 2FA opcional para a conta proprietária através de `ADMIN_TOTP_SECRET`;
-- bloqueio contra força bruta **por conta e por IP**;
-- janela de tentativas e duração do bloqueio configuráveis;
-- cookies administrativos `HttpOnly`, `Secure` em produção e `SameSite=Strict`;
-- proteção de origem nos endpoints administrativos;
-- limite de tamanho nas requisições de login e administração;
-- CSP, HSTS em produção, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` e proteção contra cache/indexação do painel;
-- trilha de auditoria e aprovação de ações críticas preservadas.
+- `ADMIN_EMAILS`
+- `ADMIN_PASSWORD`
+- `ADMIN_SESSION_SECRET`
+- `ADMIN_TOTP_SECRET`
 
-### Catálogo, SEO e dados
+As sessões administrativas são aleatórias, guardadas em cookie HttpOnly e validadas pela tabela `admin_sessions` no Supabase. O banco armazena apenas o hash do token de sessão.
 
-- a página inicial recebe o catálogo diretamente do **MySQL no servidor**;
-- o catálogo padrão continua apenas como fallback de emergência;
-- sitemap passa a refletir categorias e produtos ativos do banco;
-- produtos relacionados passam a vir do banco;
-- preço promocional respeita início/fim da oferta também na página individual do produto;
-- domínio antigo fixo removido de metadata, sitemap, robots e dados estruturados;
-- URL pública centralizada por `NEXT_PUBLIC_SITE_URL`, `SITE_URL` ou variáveis automáticas da Vercel;
-- Schema.org de `GroceryStore` e `Product` usa dados reais da loja sempre que o banco está disponível.
+### Primeiro acesso
 
-### PWA e mobile
+Se não existir nenhum administrador ativo, acesse:
 
-- novo Service Worker V5;
-- cache público separado do cache de assets;
-- páginas administrativas, acompanhamento e histórico pessoal não são armazenadas no cache offline;
-- tela `/offline` própria;
-- ícones PWA 192×192 e 512×512, incluindo versões maskable;
-- atalhos de instalação para Comprar, Acompanhar pedido e Meus pedidos;
-- atualização segura dos caches antigos.
+`/admin/setup`
 
-### Compatibilidade com a V4
+Cadastre nome, e-mail e senha. Assim que a primeira conta é criada, essa tela deixa de aceitar novos cadastros e o acesso normal passa a ser:
 
-A V5 mantém a estrutura MySQL/Drizzle da V4 e possui migração incremental em:
+`/admin/login`
 
-`database/migrations/V5_SECURITY.sql`
+Novos membros da equipe continuam sendo cadastrados pelo próprio painel, com níveis e permissões individuais.
 
-A aplicação também tenta aplicar automaticamente as colunas de segurança da V5 quando o usuário do banco possui permissão de `ALTER TABLE`. Em ambientes mais restritos, execute o SQL de migração manualmente antes de usar os novos acessos da equipe.
+## Banco Supabase
 
-## Arquivos importantes
+O projeto foi adaptado de MySQL para **PostgreSQL**:
 
-- `database/supermercado_central.sql` — instalação completa para banco novo;
-- `database/migrations/V5_SECURITY.sql` — migração de uma instalação V4 existente;
-- `database/LEIA-ME-INSTALACAO.txt` — instalação rápida;
-- `.env.example` — todas as variáveis de ambiente;
-- `lib/sql-database.ts` — pool e camada de compatibilidade MySQL;
-- `lib/admin-password.ts` — hash de senha scrypt;
-- `lib/admin-mfa.ts` — criptografia dos segredos TOTP;
-- `lib/totp.ts` — geração/validação TOTP;
-- `lib/admin-login-security.ts` — rate limiting de login;
-- `lib/v5-schema.ts` — migração automática da camada de segurança;
-- `lib/site-url.ts` — URL pública única para SEO;
-- `db/schema.ts` — schema Drizzle MySQL.
+- `pg` substitui `mysql2`;
+- `ON DUPLICATE KEY UPDATE` foi migrado para `ON CONFLICT`;
+- funções de data MySQL foram migradas para intervalos PostgreSQL;
+- inserção de pedidos usa `RETURNING id`;
+- sessões e rate limiting administrativo ficam persistidos no Supabase.
 
-## Requisitos
+A aplicação usa uma camada de compatibilidade `prepare().bind().all()/first()/run()/batch()` para preservar a organização das rotas existentes.
 
-- Node.js `>=22 <27`;
-- MySQL 5.7+/8.x ou MariaDB 10.3+;
-- hospedagem Node.js com acesso ao banco MySQL/MariaDB.
+## Configuração Vercel
 
-## Banco novo
-
-1. Crie um banco MySQL/MariaDB vazio.
-2. Crie o usuário do banco e conceda privilégios.
-3. Importe:
-
-   `database/supermercado_central.sql`
-
-O arquivo cria **24 tabelas**, índices e dados iniciais.
-
-## Atualizando um banco V4
-
-Execute:
-
-`database/migrations/V5_SECURITY.sql`
-
-A migração preserva produtos, clientes, pedidos, configurações, estoque e demais dados existentes.
-
-## Variáveis de ambiente
-
-Exemplo mínimo:
+Cadastre em **Vercel → Project → Settings → Environment Variables**:
 
 ```env
-DATABASE_URL=mysql://usuario:senha@host:3306/supermercado_central
-
-AUTH_MODE=local
-ADMIN_EMAILS=proprietario@seudominio.com
-ADMIN_PASSWORD=uma-senha-proprietaria-forte
-ADMIN_SESSION_SECRET=um-segredo-exclusivo-longo-com-64-ou-mais-caracteres
-
-NEXT_PUBLIC_SITE_URL=https://www.seudominio.com.br
-
+DATABASE_URL=postgresql://...
+DB_CONNECTION_LIMIT=5
+NEXT_PUBLIC_SITE_URL=https://SEU-PROJETO.vercel.app
 ADMIN_LOGIN_MAX_ATTEMPTS=5
 ADMIN_LOGIN_WINDOW_MINUTES=15
 ADMIN_LOGIN_LOCK_MINUTES=15
 ```
 
-Também é possível configurar o banco pelos campos `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` e `DB_NAME`.
+Para `DATABASE_URL`, copie a **Transaction Pooler connection string** do Supabase. Não publique essa URL no GitHub.
 
-### 2FA do proprietário
-
-Para exigir TOTP também na conta proprietária, cadastre uma chave Base32 no aplicativo autenticador e no ambiente:
-
-```env
-ADMIN_TOTP_SECRET=SUA_CHAVE_BASE32
-```
-
-As contas da equipe não usam essa chave. Cada funcionário recebe uma chave TOTP própria gerada no painel em **Equipe e permissões**.
-
-## Instalação
+## Desenvolvimento local
 
 ```bash
 npm install
+npm run typecheck
 npm run dev
 ```
 
-Produção:
+Abra:
 
-```bash
-npm run typecheck
-npm run build
-npm start
-```
+- Loja: `http://localhost:3000`
+- Admin: `http://localhost:3000/admin/login`
+- Primeiro administrador: `http://localhost:3000/admin/setup`
 
-## Painel administrativo
+## Funcionalidades preservadas
 
-A conta proprietária definida em `ADMIN_EMAILS` continua sendo o acesso de recuperação/controle total. A partir da V5, o proprietário pode cadastrar novos membros em **Equipe e permissões**, definindo:
-
-- nome;
-- e-mail de login;
-- senha individual;
-- perfil-base;
-- permissões adicionais;
-- 2FA TOTP;
-- status ativo/inativo.
-
-Desativar um membro impede novo acesso ao painel mesmo que ele ainda possua um cookie de sessão assinado, porque as permissões são validadas novamente no servidor.
-
-## URL pública e SEO
-
-Não deixe URLs antigas fixas no código. Configure:
-
-```env
-NEXT_PUBLIC_SITE_URL=https://www.seudominio.com.br
-```
-
-Na Vercel, se essa variável não existir, a aplicação também reconhece `VERCEL_PROJECT_PRODUCTION_URL` e `VERCEL_URL`.
-
-## Observação sobre imagens
-
-A V5 preserva o armazenamento de imagens na tabela `media_files` para evitar quebrar instalações existentes. Para catálogos muito grandes, a próxima evolução recomendada é migrar os binários para armazenamento de objetos (Vercel Blob, S3/R2 ou Supabase Storage) e manter apenas a URL no MySQL.
-
-## Legado
-
-Arquivos específicos das versões Cloudflare/D1 permanecem em `legacy/` apenas como histórico e não fazem parte da compilação principal.
+A V6 mantém vitrine, catálogo, produtos por unidade/peso, estoque, carrinho, checkout, WhatsApp, pedidos, acompanhamento, clientes, fidelidade, cupons, banners, encarte, avaliações, notificações, relatórios, auditoria, backups, equipe e permissões.

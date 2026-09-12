@@ -56,10 +56,8 @@ type AdminData = {
   devices: Record<string, unknown>[];
   inventoryHistory: Record<string, unknown>[];
   securitySettings: {
-    requireMfa: boolean;
     requireOwnerApproval: boolean;
     newDeviceAlerts: boolean;
-    ownerMfaEnabled: boolean;
     updatedBy: string;
     updatedAt: string;
   };
@@ -218,7 +216,7 @@ const tabs: TabDefinition[] = [
   { id: "import", label: "Importar e exportar", icon: "import", group: "Sistema", description: "Importe produtos e mantenha cópias do catálogo." },
   { id: "audit", label: "Auditoria", icon: "audit", group: "Sistema", description: "Consulte o histórico das alterações administrativas." },
   { id: "team", label: "Equipe e acessos", icon: "team", group: "Sistema", description: "Controle perfis e permissões da equipe." },
-  { id: "security", label: "Central de segurança", icon: "security", group: "Sistema", description: "Políticas, 2FA e dispositivos administrativos." },
+  { id: "security", label: "Central de segurança", icon: "security", group: "Sistema", description: "Políticas e dispositivos administrativos." },
   { id: "approvals", label: "Aprovações", icon: "approvals", group: "Sistema", description: "Revise e execute solicitações de alto impacto." },
   { id: "backups", label: "Backups", icon: "backups", group: "Sistema", description: "Crie cópias e restaure versões do catálogo." },
 ];
@@ -888,7 +886,6 @@ export default function AdminDashboard({
           {tab === "team" && (
             <TeamAccessManager
               rows={data.staff}
-              requireMfa={data.securitySettings.requireMfa}
               busy={busy}
               save={(value) => post("saveStaff", value)}
             />
@@ -3096,19 +3093,14 @@ const parsePermissionList = (value: unknown): AdminPermission[] => {
 
 function TeamAccessManager({
   rows,
-  requireMfa,
   busy,
   save,
 }: {
   rows: Record<string, unknown>[];
-  requireMfa: boolean;
   busy: boolean;
   save: (value: Record<string, unknown>) => Promise<boolean>;
 }) {
   const [editor, setEditor] = useState<Record<string, unknown> | null>(null);
-  const [mfaSetup, setMfaSetup] = useState<{ secret: string; qrDataUrl: string } | null>(null);
-  const [mfaBusy, setMfaBusy] = useState(false);
-  const [mfaError, setMfaError] = useState("");
   const editorOpen = Boolean(editor);
   useEffect(() => {
     if (!editorOpen) return;
@@ -3124,56 +3116,23 @@ function TeamAccessManager({
     };
   }, [editorOpen]);
   const openEditor = (member?: Record<string, unknown>) => {
-    setMfaSetup(null);
-    setMfaError("");
     setEditor(
       member
         ? {
             ...member,
             permissions: parsePermissionList(member.permissions_json),
-            mfaRequired: requireMfa || Number(member.mfa_required ?? 1) === 1,
-            totpEnabled: Number(member.totp_enabled ?? 0) === 1,
             active: Number(member.active ?? 1) === 1,
             password: "",
-            totpSecret: "",
           }
         : {
             name: "",
             email: "",
             role: "manager",
             permissions: [],
-            mfaRequired: true,
-            totpEnabled: false,
             active: true,
             password: "",
-            totpSecret: "",
           },
     );
-  };
-  const generateMfaSetup = async () => {
-    const email = String(editor?.email || "").trim();
-    if (!email.includes("@")) return;
-    setMfaBusy(true);
-    setMfaError("");
-    try {
-      const response = await fetch("/api/admin/mfa/setup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Falha ao gerar 2FA");
-      setMfaSetup({ secret: result.secret, qrDataUrl: result.qrDataUrl });
-      setEditor((current) =>
-        current
-          ? { ...current, mfaRequired: true, totpSecret: result.secret }
-          : current,
-      );
-    } catch (error) {
-      setMfaError(error instanceof Error ? error.message : "Falha ao gerar 2FA");
-    } finally {
-      setMfaBusy(false);
-    }
   };
   return (
     <section className="admin-section-stack">
@@ -3209,13 +3168,7 @@ function TeamAccessManager({
                 </header>
                 <div className="team-role-line">
                   <strong>{role?.label || String(member.role)}</strong>
-                  <span>
-                    {requireMfa || Number(member.mfa_required ?? 1) === 1
-                      ? Number(member.totp_enabled ?? 0) === 1
-                        ? "2FA ativo"
-                        : "2FA pendente"
-                      : "2FA opcional"}
-                  </span>
+                  <span>Senha individual</span>
                 </div>
                 <p>{role?.description || "Perfil personalizado da equipe."}</p>
                 <footer>
@@ -3355,20 +3308,6 @@ function TeamAccessManager({
               <label>
                 <input
                   type="checkbox"
-                  checked={Boolean(editor.mfaRequired)}
-                  disabled={requireMfa}
-                  onChange={(event) =>
-                    setEditor({ ...editor, mfaRequired: event.target.checked })
-                  }
-                />
-                <span>
-                  <b>Exigir 2FA na conta</b>
-                  <small>{requireMfa ? "Obrigatório pela política global de segurança." : "Validação TOTP real no login administrativo."}</small>
-                </span>
-              </label>
-              <label>
-                <input
-                  type="checkbox"
                   checked={Boolean(editor.active)}
                   onChange={(event) =>
                     setEditor({ ...editor, active: event.target.checked })
@@ -3380,46 +3319,6 @@ function TeamAccessManager({
                 </span>
               </label>
             </div>
-            {Boolean(editor.mfaRequired) && (
-              <div className="mfa-setup-box">
-                <div>
-                  <b>Autenticador em duas etapas</b>
-                  <small>
-                    {Boolean(editor.totpEnabled) && !mfaSetup
-                      ? "Este acesso já possui 2FA configurado. Gere uma nova chave somente para substituir a atual."
-                      : "Gere a chave, escaneie o QR Code no aplicativo autenticador e salve o acesso."}
-                  </small>
-                </div>
-                <button
-                  type="button"
-                  onClick={generateMfaSetup}
-                  disabled={mfaBusy || !String(editor.email || "").includes("@")}
-                >
-                  {mfaBusy
-                    ? "Gerando..."
-                    : Boolean(editor.totpEnabled)
-                      ? "Regenerar 2FA"
-                      : "Gerar 2FA"}
-                </button>
-                {mfaError && <p className="mfa-setup-error">{mfaError}</p>}
-                {mfaSetup && (
-                  <div className="mfa-setup-result">
-                    <Image
-                      src={mfaSetup.qrDataUrl}
-                      alt="QR Code para configurar o autenticador"
-                      width={190}
-                      height={190}
-                      unoptimized
-                    />
-                    <div>
-                      <span>Chave manual</span>
-                      <code>{mfaSetup.secret}</code>
-                      <small>Guarde esta chave em local seguro. Ela não será exibida novamente depois de salvar.</small>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
             <footer>
               <button type="button" onClick={() => setEditor(null)}>
                 Cancelar
@@ -3454,15 +3353,10 @@ function SecurityCenter({
 }) {
   const [policy, setPolicy] = useState(settings);
   const policyItems: {
-    key: "requireMfa" | "requireOwnerApproval" | "newDeviceAlerts";
+    key: "requireOwnerApproval" | "newDeviceAlerts";
     title: string;
     text: string;
   }[] = [
-    {
-      key: "requireMfa",
-      title: "2FA obrigatório",
-      text: "Formaliza o segundo fator como requisito para toda a equipe.",
-    },
     {
       key: "requireOwnerApproval",
       title: "Dupla aprovação",
@@ -3476,13 +3370,6 @@ function SecurityCenter({
   ];
   return (
     <section className="admin-section-stack">
-      <div className={`owner-mfa-status ${settings.ownerMfaEnabled ? "active" : "warning"}`}>
-        <AdminIcon name="security" size={20} />
-        <div>
-          <b>{settings.ownerMfaEnabled ? "2FA do proprietário ativo" : "2FA do proprietário ainda não ativado"}</b>
-          <small>{settings.ownerMfaEnabled ? "A conta proprietária exige código TOTP no login." : "Defina ADMIN_TOTP_SECRET na hospedagem para proteger também a conta proprietária."}</small>
-        </div>
-      </div>
       <AdminSectionHeader
         eyebrow="PROTEÇÃO EM CAMADAS"
         title="Central de segurança"
@@ -3494,13 +3381,13 @@ function SecurityCenter({
         <div>
           <span>POSTURA DE SEGURANÇA</span>
           <strong>
-            {[policy.requireMfa, policy.requireOwnerApproval, policy.newDeviceAlerts].filter(Boolean).length}/3
+            {[policy.requireOwnerApproval, policy.newDeviceAlerts].filter(Boolean).length}/2
           </strong>
           <b>proteções ativas</b>
         </div>
         <p>
-          O login local usa credenciais individuais e o 2FA TOTP é validado no
-          servidor da loja. Permissões e ações sensíveis continuam protegidas
+          O painel usa credenciais individuais, sessões seguras e bloqueio contra
+          tentativas repetidas. Permissões e ações sensíveis continuam protegidas
           por função e trilha de auditoria.
         </p>
         <i>
@@ -3511,7 +3398,7 @@ function SecurityCenter({
         {policyItems.map((item) => (
           <label key={item.key} className={policy[item.key] ? "active" : ""}>
             <span>
-              <AdminIcon name={item.key === "requireMfa" ? "lock" : item.key === "requireOwnerApproval" ? "approvals" : "notifications"} size={19} />
+              <AdminIcon name={item.key === "requireOwnerApproval" ? "approvals" : "notifications"} size={19} />
             </span>
             <div>
               <b>{item.title}</b>

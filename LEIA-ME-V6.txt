@@ -1,0 +1,52 @@
+SC SUPERMERCADO CENTRAL - V6 SUPABASE + VERCEL
+================================================
+
+ARQUITETURA OFICIAL
+-------------------
+GitHub   = codigo-fonte
+Supabase = PostgreSQL / dados
+Vercel   = hospedagem Next.js
+
+Railway nao faz mais parte desta versao.
+MySQL/MariaDB nao faz mais parte do runtime desta versao.
+
+ADMINISTRACAO
+-------------
+O login agora usa somente:
+- e-mail
+- senha
+
+O campo/codigo 2FA foi removido.
+Nao existem mais ADMIN_EMAILS, ADMIN_PASSWORD ou ADMIN_SESSION_SECRET.
+
+PRIMEIRO ACESSO
+---------------
+Depois de publicar e conectar a DATABASE_URL do Supabase, abra:
+
+https://SEU-SITE.vercel.app/admin/setup
+
+Crie o primeiro administrador.
+Depois disso, a tela de configuracao inicial fica bloqueada e o acesso sera:
+
+https://SEU-SITE.vercel.app/admin/login
+
+BANCO
+-----
+Use a Connection String do Transaction Pooler do Supabase na variavel:
+
+DATABASE_URL
+
+Nunca coloque essa URL no GitHub.
+
+VALIDACAO LOCAL
+---------------
+Execute:
+PREPARAR_V6_SUPABASE_VERCEL.bat
+
+PUBLICACAO
+----------
+1. Atualize o GitHub com o pacote V6.
+2. Importe/conecte o repositorio na Vercel.
+3. Cadastre DATABASE_URL antes do primeiro deploy de producao.
+4. Publique.
+5. Acesse /admin/setup e crie o administrador.

@@ -55,7 +55,7 @@ export async function touchAdminDevice(request: Request, actorEmail: string) {
   );
   await database()
     .prepare(
-      "INSERT INTO admin_devices(id,actor_email,label,user_agent,last_seen_at) VALUES(?,?,?,?,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE last_seen_at=CURRENT_TIMESTAMP,label=VALUES(label),user_agent=VALUES(user_agent)",
+      "INSERT INTO admin_devices(id,actor_email,label,user_agent,last_seen_at) VALUES(?,?,?,?,CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET last_seen_at=CURRENT_TIMESTAMP,label=EXCLUDED.label,user_agent=EXCLUDED.user_agent",
     )
     .bind(id, actorEmail.toLowerCase(), deviceLabel(userAgent), userAgent)
     .run();
@@ -94,7 +94,7 @@ export async function saveCatalogBackup(
   const json = JSON.stringify(data, null, 2);
   await database()
     .prepare(
-      "INSERT INTO catalog_backups(`key`,data_json,size_bytes,reason,actor_email) VALUES(?,?,?,?,?) ON DUPLICATE KEY UPDATE data_json=VALUES(data_json),size_bytes=VALUES(size_bytes),reason=VALUES(reason),actor_email=VALUES(actor_email),created_at=CURRENT_TIMESTAMP",
+      "INSERT INTO catalog_backups(`key`,data_json,size_bytes,reason,actor_email) VALUES(?,?,?,?,?) ON CONFLICT (`key`) DO UPDATE SET data_json=EXCLUDED.data_json,size_bytes=EXCLUDED.size_bytes,reason=EXCLUDED.reason,actor_email=EXCLUDED.actor_email,created_at=CURRENT_TIMESTAMP",
     )
     .bind(
       objectKey,

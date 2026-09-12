@@ -1,0 +1,34 @@
+SC SUPERMERCADO CENTRAL V6 - ORDEM DE PUBLICACAO
+==================================================
+
+ARQUITETURA OFICIAL:
+GitHub + Supabase + Vercel
+
+1) Coloque na mesma pasta:
+   - SC_SUPERMERCADO_CENTRAL_V6_SUPABASE_VERCEL.zip
+   - PUBLICAR_V6_GITHUB.bat
+
+2) Execute PUBLICAR_V6_GITHUB.bat e digite PUBLICAR.
+   Isso atualiza o repositorio oficial:
+   https://github.com/joaopaulo2157/sc-central-supermercado
+
+3) Execute CONFIGURAR_E_PUBLICAR_VERCEL_V6.bat.
+   O script baixa o codigo do GitHub, cria/vincula o projeto Vercel,
+   pede a DATABASE_URL do Transaction Pooler do Supabase de forma oculta
+   e faz o deploy de producao.
+
+4) Quando o deploy ficar READY, abra:
+   https://SEU-ENDERECO.vercel.app/admin/setup
+
+5) Crie o primeiro administrador.
+   O acesso normal depois sera:
+   https://SEU-ENDERECO.vercel.app/admin/login
+
+LOGIN:
+- e-mail + senha
+- sem 2FA
+
+IMPORTANTE:
+- Nao coloque DATABASE_URL no GitHub.
+- Nao apague o Railway ate confirmar que loja, admin e banco funcionam na Vercel.
+- Depois da confirmacao, o Railway deixa de ser necessario.

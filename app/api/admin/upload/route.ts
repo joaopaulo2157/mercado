@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     await audit(auth.user.email, "upload", `${scope}_image`, key, {
       size: file.size,
       type: file.type,
-      storage: "mysql",
+      storage: "supabase-postgres",
     });
 
     return Response.json({

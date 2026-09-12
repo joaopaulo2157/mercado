@@ -1,21 +1,7 @@
-import mysql, {
-  type Pool,
-  type PoolConnection,
-  type ResultSetHeader,
-  type RowDataPacket,
-} from "mysql2/promise";
+import { Pool, type PoolClient, type QueryResultRow } from "pg";
 
 type SqlRow = Record<string, unknown>;
-
-type SqlParameter =
-  | string
-  | number
-  | bigint
-  | boolean
-  | Date
-  | null
-  | Buffer
-  | Uint8Array;
+type SqlParameter = string | number | bigint | boolean | Date | null | Buffer | Uint8Array;
 
 type SqlMeta = {
   changes: number;
@@ -30,114 +16,48 @@ export type SqlResult<T = SqlRow> = {
   meta: SqlMeta;
 };
 
-function databaseConfig() {
-  const useSsl = /^(1|true|yes)$/i.test(process.env.DB_SSL ?? "");
-  const common = {
-    waitForConnections: true,
-    connectionLimit: Math.max(1, Number(process.env.DB_CONNECTION_LIMIT || 10)),
-    queueLimit: 0,
-    charset: "utf8mb4",
-    timezone: "Z" as const,
-    decimalNumbers: true,
-    ssl: useSsl
-      ? {
-          rejectUnauthorized: !/^(0|false|no)$/i.test(
-            process.env.DB_SSL_REJECT_UNAUTHORIZED ?? "true",
-          ),
-        }
-      : undefined,
-  };
-
-  const url = process.env.DATABASE_URL?.trim();
-  if (url) {
-    const parsed = new URL(url);
-    if (!/^mysql:$/i.test(parsed.protocol)) {
-      throw new Error("DATABASE_URL deve utilizar o protocolo mysql://.");
-    }
-    const database = decodeURIComponent(parsed.pathname.replace(/^\/+/, ""));
-    if (!parsed.hostname || !parsed.username || !database) {
-      throw new Error(
-        "DATABASE_URL inválida. Use mysql://usuario:senha@host:3306/banco.",
-      );
-    }
-    return {
-      ...common,
-      host: parsed.hostname,
-      port: Number(parsed.port || 3306),
-      user: decodeURIComponent(parsed.username),
-      password: decodeURIComponent(parsed.password),
-      database,
-    };
-  }
-
-  const host = process.env.DB_HOST?.trim();
-  const user = process.env.DB_USER?.trim();
-  const database = process.env.DB_NAME?.trim();
-  if (!host || !user || !database) {
+function connectionString() {
+  const url = (process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL || "").trim();
+  if (!url) {
     throw new Error(
-      "Banco SQL não configurado. Defina DATABASE_URL ou DB_HOST, DB_PORT, DB_USER, DB_PASSWORD e DB_NAME.",
+      "Supabase não configurado. Defina DATABASE_URL com a Connection String PostgreSQL do Supabase.",
     );
   }
-
-  return {
-    ...common,
-    host,
-    port: Number(process.env.DB_PORT || 3306),
-    user,
-    password: process.env.DB_PASSWORD ?? "",
-    database,
-  };
+  if (!/^postgres(ql)?:\/\//i.test(url)) {
+    throw new Error("DATABASE_URL deve utilizar postgres:// ou postgresql://.");
+  }
+  return url;
 }
 
 let pool: Pool | null = null;
 
 export function getSqlPool(): Pool {
   if (!pool) {
-    pool = mysql.createPool(databaseConfig());
+    const url = connectionString();
+    const parsed = new URL(url);
+    const sslRequired = /supabase\.(co|com)$/i.test(parsed.hostname) || /pooler\.supabase\.com$/i.test(parsed.hostname);
+    pool = new Pool({
+      connectionString: url,
+      max: Math.max(1, Number(process.env.DB_CONNECTION_LIMIT || 5)),
+      idleTimeoutMillis: 20_000,
+      connectionTimeoutMillis: 10_000,
+      ssl: sslRequired ? { rejectUnauthorized: false } : undefined,
+    });
   }
   return pool;
 }
 
 function normalizeParameter(value: unknown): SqlParameter {
-  // mysql2 >= 3.24 usa ExecuteValues estrito. Nunca repassamos `undefined`
-  // ou objetos arbitrarios diretamente para prepared statements.
   if (value === null || value === undefined) return null;
   if (value instanceof Date) return value;
   if (Buffer.isBuffer(value)) return value;
-  if (value instanceof Uint8Array) return value;
-  if (
-    typeof value === "number" ||
-    typeof value === "bigint" ||
-    typeof value === "boolean"
-  ) {
-    return value;
+  if (value instanceof Uint8Array) return Buffer.from(value);
+  if (["string", "number", "bigint", "boolean"].includes(typeof value)) return value as SqlParameter;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
   }
-
-  if (typeof value !== "string") {
-    // Objetos/arrays devem chegar ao banco serializados. A conversao aqui
-    // evita valores incompatíveis com o protocolo de prepared statements.
-    try {
-      return JSON.stringify(value);
-    } catch {
-      return String(value);
-    }
-  }
-
-  // MySQL/MariaDB DATETIME aceita "YYYY-MM-DD HH:mm:ss". Os formularios do
-  // projeto utilizam ISO/datetime-local, entao normalizamos sem alterar textos comuns.
-  const localDateTime = value.match(
-    /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::(\d{2}))?$/,
-  );
-  if (localDateTime) {
-    return `${localDateTime[1]} ${localDateTime[2]}:${localDateTime[3] ?? "00"}`;
-  }
-
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(value)) {
-    const parsed = new Date(value);
-    if (!Number.isNaN(parsed.getTime())) return parsed;
-  }
-
-  return value;
 }
 
 function normalizeValue(value: unknown): unknown {
@@ -145,45 +65,35 @@ function normalizeValue(value: unknown): unknown {
   return value;
 }
 
-function normalizeRows<T>(rows: RowDataPacket[]): T[] {
+function normalizeRows<T>(rows: QueryResultRow[]): T[] {
   return rows.map((row) =>
-    Object.fromEntries(
-      Object.entries(row).map(([key, value]) => [key, normalizeValue(value)]),
-    ),
+    Object.fromEntries(Object.entries(row).map(([key, value]) => [key, normalizeValue(value)])),
   ) as T[];
 }
 
+function pgQuery(query: string) {
+  let index = 0;
+  return query.replace(/\?/g, () => `$${++index}`).replace(/`([^`]+)`/g, '"$1"');
+}
+
 async function executeOn<T = SqlRow>(
-  executor: Pool | PoolConnection,
+  executor: Pool | PoolClient,
   query: string,
   params: unknown[],
 ): Promise<SqlResult<T>> {
   const values = params.map(normalizeParameter);
-  const [raw] = await executor.execute(query, values);
-
-  if (Array.isArray(raw)) {
-    const results = normalizeRows<T>(raw as RowDataPacket[]);
-    return {
-      results,
-      success: true,
-      meta: {
-        changes: 0,
-        last_row_id: 0,
-        rows_read: results.length,
-        rows_written: 0,
-      },
-    };
-  }
-
-  const header = raw as ResultSetHeader;
+  const result = await executor.query(pgQuery(query), values);
+  const results = normalizeRows<T>(result.rows);
+  const rowCount = Number(result.rowCount || 0);
+  const first = result.rows[0] as Record<string, unknown> | undefined;
   return {
-    results: [],
+    results,
     success: true,
     meta: {
-      changes: Number(header.affectedRows || 0),
-      last_row_id: Number(header.insertId || 0),
-      rows_read: 0,
-      rows_written: Number(header.affectedRows || 0),
+      changes: rowCount,
+      last_row_id: Number(first?.id || 0),
+      rows_read: results.length,
+      rows_written: /^(INSERT|UPDATE|DELETE)/i.test(query.trim()) ? rowCount : 0,
     },
   };
 }
@@ -191,26 +101,21 @@ async function executeOn<T = SqlRow>(
 export class SqlPreparedStatement {
   readonly query: string;
   readonly params: unknown[];
-
   constructor(query: string, params: unknown[] = []) {
     this.query = query;
     this.params = params;
   }
-
   bind(...values: unknown[]) {
     return new SqlPreparedStatement(this.query, values);
   }
-
-  async all<T = SqlRow>(): Promise<SqlResult<T>> {
+  async all<T = SqlRow>() {
     return executeOn<T>(getSqlPool(), this.query, this.params);
   }
-
-  async first<T = SqlRow>(): Promise<T | null> {
+  async first<T = SqlRow>() {
     const result = await this.all<T>();
     return result.results[0] ?? null;
   }
-
-  async run<T = SqlRow>(): Promise<SqlResult<T>> {
+  async run<T = SqlRow>() {
     return executeOn<T>(getSqlPool(), this.query, this.params);
   }
 }
@@ -219,30 +124,26 @@ class SqlDatabaseCompat {
   prepare(query: string) {
     return new SqlPreparedStatement(query);
   }
-
-  async batch<T = SqlRow>(statements: SqlPreparedStatement[]): Promise<SqlResult<T>[]> {
-    const connection = await getSqlPool().getConnection();
+  async batch<T = SqlRow>(statements: SqlPreparedStatement[]) {
+    const client = await getSqlPool().connect();
     try {
-      await connection.beginTransaction();
+      await client.query("BEGIN");
       const results: SqlResult<T>[] = [];
       for (const statement of statements) {
-        results.push(
-          await executeOn<T>(connection, statement.query, statement.params),
-        );
+        results.push(await executeOn<T>(client, statement.query, statement.params));
       }
-      await connection.commit();
+      await client.query("COMMIT");
       return results;
     } catch (error) {
-      await connection.rollback();
+      await client.query("ROLLBACK");
       throw error;
     } finally {
-      connection.release();
+      client.release();
     }
   }
 }
 
 let compat: SqlDatabaseCompat | null = null;
-
 export function sqlDatabase() {
   compat ??= new SqlDatabaseCompat();
   return compat;

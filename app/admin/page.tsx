@@ -35,7 +35,7 @@ export default async function AdminPage() {
           <p>
             {configured
               ? `A conta ${user.email} não possui acesso administrativo ativo.`
-              : "Cadastre o e-mail autorizado nas configurações seguras do projeto para liberar este painel."}
+              : "Crie o primeiro administrador em /admin/setup para liberar este painel."}
           </p>
           <div>
             <Link href="/">Voltar para a loja</Link>

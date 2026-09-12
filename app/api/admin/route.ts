@@ -27,9 +27,7 @@ import {
 } from "@/lib/admin-operations";
 import { parseProductOptions } from "@/lib/commerce";
 import { hashAdminPassword } from "@/lib/admin-password";
-import { encryptTotpSecret } from "@/lib/admin-mfa";
 import { ensureV5SecuritySchema } from "@/lib/v5-schema";
-import { adminTotpConfigured } from "@/lib/totp";
 export const dynamic = "force-dynamic";
 type Row = Record<string, unknown>;
 const str = (v: unknown, max = 500) =>
@@ -165,7 +163,7 @@ async function snapshot() {
       .all<Row>(),
     db
       .prepare(
-        "SELECT COUNT(*) orders_count,COALESCE(SUM(total_cents),0) revenue_cents,COALESCE(SUM(item_count),0) items_count,COALESCE(SUM(cost_total_cents),0) cost_cents,COALESCE(SUM(subtotal_cents-discount_cents-cost_total_cents),0) gross_profit_cents,COALESCE(AVG(total_cents),0) average_ticket_cents,COALESCE(SUM(CASE WHEN loyalty_committed=1 THEN loyalty_points_earned ELSE 0 END),0) points_issued,(SELECT COUNT(*) FROM customers) customer_count FROM orders WHERE created_at>=DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 DAY) AND status!='cancelled'",
+        "SELECT COUNT(*) orders_count,COALESCE(SUM(total_cents),0) revenue_cents,COALESCE(SUM(item_count),0) items_count,COALESCE(SUM(cost_total_cents),0) cost_cents,COALESCE(SUM(subtotal_cents-discount_cents-cost_total_cents),0) gross_profit_cents,COALESCE(AVG(total_cents),0) average_ticket_cents,COALESCE(SUM(CASE WHEN loyalty_committed=1 THEN loyalty_points_earned ELSE 0 END),0) points_issued,(SELECT COUNT(*) FROM customers) customer_count FROM orders WHERE created_at>=CURRENT_TIMESTAMP - INTERVAL '30 days' AND status!='cancelled'",
       )
       .first<Row>(),
     db
@@ -175,13 +173,13 @@ async function snapshot() {
       .first<Row>(),
     db
       .prepare(
-        "SELECT event,COUNT(*) total FROM metrics WHERE created_at>=DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 DAY) GROUP BY event",
+        "SELECT event,COUNT(*) total FROM metrics WHERE created_at>=CURRENT_TIMESTAMP - INTERVAL '30 days' GROUP BY event",
       )
       .all<Row>(),
-    db.prepare("SELECT id,email,name,role,permissions_json,mfa_required,totp_enabled,active,created_at,updated_at,CASE WHEN password_hash<>'' THEN 1 ELSE 0 END AS has_password FROM staff ORDER BY name,email").all<Row>(),
+    db.prepare("SELECT id,email,name,role,permissions_json,active,created_at,updated_at,CASE WHEN password_hash<>'' THEN 1 ELSE 0 END AS has_password FROM staff ORDER BY name,email").all<Row>(),
     db
       .prepare(
-        "SELECT m.product_id,p.name,COUNT(*) total FROM metrics m LEFT JOIN products p ON p.id=m.product_id WHERE m.event='cart_add' AND m.created_at>=DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 DAY) GROUP BY m.product_id,p.name ORDER BY total DESC LIMIT 5",
+        "SELECT m.product_id,p.name,COUNT(*) total FROM metrics m LEFT JOIN products p ON p.id=m.product_id WHERE m.event='cart_add' AND m.created_at>=CURRENT_TIMESTAMP - INTERVAL '30 days' GROUP BY m.product_id,p.name ORDER BY total DESC LIMIT 5",
       )
       .all<Row>(),
     db
@@ -195,7 +193,7 @@ async function snapshot() {
       .all<Row>(),
     db
       .prepare(
-        "SELECT *,CASE WHEN first_seen_at>=DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 24 HOUR) THEN 1 ELSE 0 END AS is_recent FROM admin_devices ORDER BY last_seen_at DESC LIMIT 50",
+        "SELECT *,CASE WHEN first_seen_at>=CURRENT_TIMESTAMP - INTERVAL '24 hours' THEN 1 ELSE 0 END AS is_recent FROM admin_devices ORDER BY last_seen_at DESC LIMIT 50",
       )
       .all<Row>(),
     db
@@ -262,11 +260,9 @@ async function snapshot() {
     devices: devices.results,
     inventoryHistory: inventoryHistory.results,
     securitySettings: {
-      requireMfa: Number(security?.require_mfa ?? 1) === 1,
       requireOwnerApproval:
         Number(security?.require_owner_approval ?? 1) === 1,
       newDeviceAlerts: Number(security?.new_device_alerts ?? 1) === 1,
-      ownerMfaEnabled: adminTotpConfigured(),
       updatedBy: String(security?.updated_by || "sistema"),
       updatedAt: String(security?.updated_at || ""),
     },
@@ -431,7 +427,7 @@ export async function POST(request: Request) {
           if (!existing)
             await db
               .prepare(
-                "INSERT INTO admin_approvals(id,action,payload_json,payload_hash,summary,requested_by,expires_at) VALUES(?,?,?,?,?,?,DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 48 HOUR))",
+                "INSERT INTO admin_approvals(id,action,payload_json,payload_hash,summary,requested_by,expires_at) VALUES(?,?,?,?,?,?,CURRENT_TIMESTAMP + INTERVAL '48 hours')",
               )
               .bind(
                 id,
@@ -508,7 +504,7 @@ export async function POST(request: Request) {
         .first<{ stock_quantity: number }>();
       await db
         .prepare(
-          "INSERT INTO products(id,sku,barcode,brand,name,slug,description,category_id,price_cents,old_price_cents,cost_cents,unit,sale_mode,quantity_step_millis,minimum_quantity_millis,options_json,image_url,badge,stock_quantity,min_stock,active,featured,offer_start,offer_end,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE sku=VALUES(sku),barcode=VALUES(barcode),brand=VALUES(brand),name=VALUES(name),slug=VALUES(slug),description=VALUES(description),category_id=VALUES(category_id),price_cents=VALUES(price_cents),old_price_cents=VALUES(old_price_cents),cost_cents=VALUES(cost_cents),unit=VALUES(unit),sale_mode=VALUES(sale_mode),quantity_step_millis=VALUES(quantity_step_millis),minimum_quantity_millis=VALUES(minimum_quantity_millis),options_json=VALUES(options_json),image_url=VALUES(image_url),badge=VALUES(badge),stock_quantity=VALUES(stock_quantity),min_stock=VALUES(min_stock),active=VALUES(active),featured=VALUES(featured),offer_start=VALUES(offer_start),offer_end=VALUES(offer_end),updated_at=CURRENT_TIMESTAMP",
+          "INSERT INTO products(id,sku,barcode,brand,name,slug,description,category_id,price_cents,old_price_cents,cost_cents,unit,sale_mode,quantity_step_millis,minimum_quantity_millis,options_json,image_url,badge,stock_quantity,min_stock,active,featured,offer_start,offer_end,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET sku=EXCLUDED.sku,barcode=EXCLUDED.barcode,brand=EXCLUDED.brand,name=EXCLUDED.name,slug=EXCLUDED.slug,description=EXCLUDED.description,category_id=EXCLUDED.category_id,price_cents=EXCLUDED.price_cents,old_price_cents=EXCLUDED.old_price_cents,cost_cents=EXCLUDED.cost_cents,unit=EXCLUDED.unit,sale_mode=EXCLUDED.sale_mode,quantity_step_millis=EXCLUDED.quantity_step_millis,minimum_quantity_millis=EXCLUDED.minimum_quantity_millis,options_json=EXCLUDED.options_json,image_url=EXCLUDED.image_url,badge=EXCLUDED.badge,stock_quantity=EXCLUDED.stock_quantity,min_stock=EXCLUDED.min_stock,active=EXCLUDED.active,featured=EXCLUDED.featured,offer_start=EXCLUDED.offer_start,offer_end=EXCLUDED.offer_end,updated_at=CURRENT_TIMESTAMP",
         )
         .bind(
           id,
@@ -575,7 +571,7 @@ export async function POST(request: Request) {
         id = str(d.id, 80) || slug(d.name) || crypto.randomUUID();
       await db
         .prepare(
-          "INSERT INTO categories(id,name,slug,icon,sort_order,active,updated_at) VALUES(?,?,?,?,?,?,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE name=VALUES(name),slug=VALUES(slug),icon=VALUES(icon),sort_order=VALUES(sort_order),active=VALUES(active),updated_at=CURRENT_TIMESTAMP",
+          "INSERT INTO categories(id,name,slug,icon,sort_order,active,updated_at) VALUES(?,?,?,?,?,?,CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,slug=EXCLUDED.slug,icon=EXCLUDED.icon,sort_order=EXCLUDED.sort_order,active=EXCLUDED.active,updated_at=CURRENT_TIMESTAMP",
         )
         .bind(
           id,
@@ -592,7 +588,7 @@ export async function POST(request: Request) {
         id = str(d.id, 80) || slug(d.name) || crypto.randomUUID();
       await db
         .prepare(
-          "INSERT INTO delivery_zones(id,name,fee_cents,minimum_order_cents,free_shipping_cents,eta,active,updated_at) VALUES(?,?,?,?,?,?,?,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE name=VALUES(name),fee_cents=VALUES(fee_cents),minimum_order_cents=VALUES(minimum_order_cents),free_shipping_cents=VALUES(free_shipping_cents),eta=VALUES(eta),active=VALUES(active),updated_at=CURRENT_TIMESTAMP",
+          "INSERT INTO delivery_zones(id,name,fee_cents,minimum_order_cents,free_shipping_cents,eta,active,updated_at) VALUES(?,?,?,?,?,?,?,CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,fee_cents=EXCLUDED.fee_cents,minimum_order_cents=EXCLUDED.minimum_order_cents,free_shipping_cents=EXCLUDED.free_shipping_cents,eta=EXCLUDED.eta,active=EXCLUDED.active,updated_at=CURRENT_TIMESTAMP",
         )
         .bind(
           id,
@@ -611,7 +607,7 @@ export async function POST(request: Request) {
       if (!code) throw new Error("Informe o código do cupom");
       await db
         .prepare(
-          "INSERT INTO coupons(code,type,value,max_discount_cents,minimum_cents,starts_at,ends_at,usage_limit,used_count,active) VALUES(?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE type=VALUES(type),value=VALUES(value),max_discount_cents=VALUES(max_discount_cents),minimum_cents=VALUES(minimum_cents),starts_at=VALUES(starts_at),ends_at=VALUES(ends_at),usage_limit=VALUES(usage_limit),active=VALUES(active)",
+          "INSERT INTO coupons(code,type,value,max_discount_cents,minimum_cents,starts_at,ends_at,usage_limit,used_count,active) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT (code) DO UPDATE SET type=EXCLUDED.type,value=EXCLUDED.value,max_discount_cents=EXCLUDED.max_discount_cents,minimum_cents=EXCLUDED.minimum_cents,starts_at=EXCLUDED.starts_at,ends_at=EXCLUDED.ends_at,usage_limit=EXCLUDED.usage_limit,active=EXCLUDED.active",
         )
         .bind(
           code,
@@ -632,7 +628,7 @@ export async function POST(request: Request) {
         id = str(d.id, 80) || crypto.randomUUID();
       await db
         .prepare(
-          "INSERT INTO banners(id,title,subtitle,image_url,cta_label,cta_url,active,sort_order) VALUES(?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE title=VALUES(title),subtitle=VALUES(subtitle),image_url=VALUES(image_url),cta_label=VALUES(cta_label),cta_url=VALUES(cta_url),active=VALUES(active),sort_order=VALUES(sort_order)",
+          "INSERT INTO banners(id,title,subtitle,image_url,cta_label,cta_url,active,sort_order) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT (id) DO UPDATE SET title=EXCLUDED.title,subtitle=EXCLUDED.subtitle,image_url=EXCLUDED.image_url,cta_label=EXCLUDED.cta_label,cta_url=EXCLUDED.cta_url,active=EXCLUDED.active,sort_order=EXCLUDED.sort_order",
         )
         .bind(
           id,
@@ -654,7 +650,7 @@ export async function POST(request: Request) {
         throw new Error("Informe os títulos da seção institucional e do encarte");
       await db
         .prepare(
-          "INSERT INTO home_content(id,about_eyebrow,about_title,about_text,storefront_image_url,interior_image_url,team_image_url,flyer_eyebrow,flyer_title,flyer_subtitle,flyer_image_url,flyer_cta_label,flyer_cta_url,flyer_starts_at,flyer_ends_at,flyer_active,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE about_eyebrow=VALUES(about_eyebrow),about_title=VALUES(about_title),about_text=VALUES(about_text),storefront_image_url=VALUES(storefront_image_url),interior_image_url=VALUES(interior_image_url),team_image_url=VALUES(team_image_url),flyer_eyebrow=VALUES(flyer_eyebrow),flyer_title=VALUES(flyer_title),flyer_subtitle=VALUES(flyer_subtitle),flyer_image_url=VALUES(flyer_image_url),flyer_cta_label=VALUES(flyer_cta_label),flyer_cta_url=VALUES(flyer_cta_url),flyer_starts_at=VALUES(flyer_starts_at),flyer_ends_at=VALUES(flyer_ends_at),flyer_active=VALUES(flyer_active),updated_at=CURRENT_TIMESTAMP",
+          "INSERT INTO home_content(id,about_eyebrow,about_title,about_text,storefront_image_url,interior_image_url,team_image_url,flyer_eyebrow,flyer_title,flyer_subtitle,flyer_image_url,flyer_cta_label,flyer_cta_url,flyer_starts_at,flyer_ends_at,flyer_active,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET about_eyebrow=EXCLUDED.about_eyebrow,about_title=EXCLUDED.about_title,about_text=EXCLUDED.about_text,storefront_image_url=EXCLUDED.storefront_image_url,interior_image_url=EXCLUDED.interior_image_url,team_image_url=EXCLUDED.team_image_url,flyer_eyebrow=EXCLUDED.flyer_eyebrow,flyer_title=EXCLUDED.flyer_title,flyer_subtitle=EXCLUDED.flyer_subtitle,flyer_image_url=EXCLUDED.flyer_image_url,flyer_cta_label=EXCLUDED.flyer_cta_label,flyer_cta_url=EXCLUDED.flyer_cta_url,flyer_starts_at=EXCLUDED.flyer_starts_at,flyer_ends_at=EXCLUDED.flyer_ends_at,flyer_active=EXCLUDED.flyer_active,updated_at=CURRENT_TIMESTAMP",
         )
         .bind(
           1,
@@ -975,7 +971,7 @@ export async function POST(request: Request) {
         if (!name) throw new Error(`Produto sem nome na linha ${index + 2}`);
         return db
           .prepare(
-            "INSERT INTO products(id,sku,barcode,brand,name,slug,description,category_id,price_cents,old_price_cents,cost_cents,unit,sale_mode,quantity_step_millis,minimum_quantity_millis,options_json,image_url,badge,stock_quantity,min_stock,active,featured,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE barcode=VALUES(barcode),brand=VALUES(brand),name=VALUES(name),slug=VALUES(slug),description=VALUES(description),category_id=VALUES(category_id),price_cents=VALUES(price_cents),old_price_cents=VALUES(old_price_cents),cost_cents=VALUES(cost_cents),unit=VALUES(unit),sale_mode=VALUES(sale_mode),quantity_step_millis=VALUES(quantity_step_millis),minimum_quantity_millis=VALUES(minimum_quantity_millis),options_json=VALUES(options_json),image_url=VALUES(image_url),badge=VALUES(badge),stock_quantity=VALUES(stock_quantity),min_stock=VALUES(min_stock),active=VALUES(active),featured=VALUES(featured),updated_at=CURRENT_TIMESTAMP",
+            "INSERT INTO products(id,sku,barcode,brand,name,slug,description,category_id,price_cents,old_price_cents,cost_cents,unit,sale_mode,quantity_step_millis,minimum_quantity_millis,options_json,image_url,badge,stock_quantity,min_stock,active,featured,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET barcode=EXCLUDED.barcode,brand=EXCLUDED.brand,name=EXCLUDED.name,slug=EXCLUDED.slug,description=EXCLUDED.description,category_id=EXCLUDED.category_id,price_cents=EXCLUDED.price_cents,old_price_cents=EXCLUDED.old_price_cents,cost_cents=EXCLUDED.cost_cents,unit=EXCLUDED.unit,sale_mode=EXCLUDED.sale_mode,quantity_step_millis=EXCLUDED.quantity_step_millis,minimum_quantity_millis=EXCLUDED.minimum_quantity_millis,options_json=EXCLUDED.options_json,image_url=EXCLUDED.image_url,badge=EXCLUDED.badge,stock_quantity=EXCLUDED.stock_quantity,min_stock=EXCLUDED.min_stock,active=EXCLUDED.active,featured=EXCLUDED.featured,updated_at=CURRENT_TIMESTAMP",
           )
           .bind(
             id,
@@ -1047,7 +1043,7 @@ export async function POST(request: Request) {
         if (operation === "price_percent")
           return db
             .prepare(
-              "UPDATE products SET price_cents=GREATEST(0,CAST(ROUND(price_cents*(100+?)/100.0) AS SIGNED)),updated_at=CURRENT_TIMESTAMP WHERE id=?",
+              "UPDATE products SET price_cents=GREATEST(0,CAST(ROUND(price_cents*(100+?)/100.0) AS INTEGER)),updated_at=CURRENT_TIMESTAMP WHERE id=?",
             )
             .bind(Math.max(-99, Math.min(500, value)), id);
         if (operation === "price_set")
@@ -1126,7 +1122,7 @@ export async function POST(request: Request) {
       if (!title || !body) throw new Error("Informe título e mensagem");
       await db
         .prepare(
-          "INSERT INTO store_notifications(id,title,body,url,active,published_at,expires_at,updated_at) VALUES(?,?,?,?,?,?,?,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE title=VALUES(title),body=VALUES(body),url=VALUES(url),active=VALUES(active),published_at=VALUES(published_at),expires_at=VALUES(expires_at),updated_at=CURRENT_TIMESTAMP",
+          "INSERT INTO store_notifications(id,title,body,url,active,published_at,expires_at,updated_at) VALUES(?,?,?,?,?,?,?,CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET title=EXCLUDED.title,body=EXCLUDED.body,url=EXCLUDED.url,active=EXCLUDED.active,published_at=EXCLUDED.published_at,expires_at=EXCLUDED.expires_at,updated_at=CURRENT_TIMESTAMP",
         )
         .bind(
           id,
@@ -1179,7 +1175,7 @@ export async function POST(request: Request) {
       const id = str(d.id, 80) || crypto.randomUUID();
       const password = String(d.password || "");
       const existing = await db
-        .prepare("SELECT id,password_hash,password_salt,password_updated_at,totp_secret_enc,totp_enabled FROM staff WHERE id=? OR lower(email)=? LIMIT 1")
+        .prepare("SELECT id,password_hash,password_salt,password_updated_at FROM staff WHERE id=? OR lower(email)=? LIMIT 1")
         .bind(id, email)
         .first<Row>();
       if (!existing && !password)
@@ -1190,17 +1186,9 @@ export async function POST(request: Request) {
             hash: String(existing?.password_hash || ""),
             salt: String(existing?.password_salt || ""),
           };
-      const mfaRequired = b(d.mfaRequired);
-      const newTotpSecret = String(d.totpSecret || "").trim();
-      const totpSecretEnc = newTotpSecret
-        ? encryptTotpSecret(newTotpSecret)
-        : String(existing?.totp_secret_enc || "");
-      const totpEnabled = mfaRequired && Boolean(totpSecretEnc);
-      if (mfaRequired && !totpSecretEnc)
-        throw new Error("Gere e configure o 2FA antes de salvar este acesso");
       await db
         .prepare(
-          "INSERT INTO staff(id,email,name,role,permissions_json,password_hash,password_salt,password_updated_at,totp_secret_enc,totp_enabled,mfa_required,active,updated_at) VALUES(?,?,?,?,?,?,?,CURRENT_TIMESTAMP,?,?,?,?,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE email=VALUES(email),name=VALUES(name),role=VALUES(role),permissions_json=VALUES(permissions_json),password_updated_at=IF(VALUES(password_hash)<>password_hash,CURRENT_TIMESTAMP,password_updated_at),password_hash=VALUES(password_hash),password_salt=VALUES(password_salt),totp_secret_enc=VALUES(totp_secret_enc),totp_enabled=VALUES(totp_enabled),mfa_required=VALUES(mfa_required),active=VALUES(active),updated_at=CURRENT_TIMESTAMP",
+          "INSERT INTO staff(id,email,name,role,permissions_json,password_hash,password_salt,password_updated_at,mfa_required,active,updated_at) VALUES(?,?,?,?,?,?,?,CURRENT_TIMESTAMP,0,?,CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET email=EXCLUDED.email,name=EXCLUDED.name,role=EXCLUDED.role,permissions_json=EXCLUDED.permissions_json,password_updated_at=CASE WHEN EXCLUDED.password_hash<>staff.password_hash THEN CURRENT_TIMESTAMP ELSE staff.password_updated_at END,password_hash=EXCLUDED.password_hash,password_salt=EXCLUDED.password_salt,mfa_required=0,active=EXCLUDED.active,updated_at=CURRENT_TIMESTAMP",
         )
         .bind(
           id,
@@ -1210,9 +1198,6 @@ export async function POST(request: Request) {
           JSON.stringify(permissions),
           credentials.hash,
           credentials.salt,
-          totpSecretEnc,
-          totpEnabled ? 1 : 0,
-          mfaRequired ? 1 : 0,
           b(d.active) ? 1 : 0,
         )
         .run();
@@ -1220,24 +1205,21 @@ export async function POST(request: Request) {
         email,
         role,
         permissions,
-        mfaRequired: b(d.mfaRequired),
       });
     } else if (action === "saveSecuritySettings") {
       const d = data as Row;
       await db
         .prepare(
-          "INSERT INTO security_settings(id,require_mfa,require_owner_approval,new_device_alerts,updated_by,updated_at) VALUES(1,?,?,?,?,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE require_mfa=VALUES(require_mfa),require_owner_approval=VALUES(require_owner_approval),new_device_alerts=VALUES(new_device_alerts),updated_by=VALUES(updated_by),updated_at=CURRENT_TIMESTAMP",
+          "INSERT INTO security_settings(id,require_mfa,require_owner_approval,new_device_alerts,updated_by,updated_at) VALUES(1,0,?,?,?,CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET require_mfa=0,require_owner_approval=EXCLUDED.require_owner_approval,new_device_alerts=EXCLUDED.new_device_alerts,updated_by=EXCLUDED.updated_by,updated_at=CURRENT_TIMESTAMP",
         )
         .bind(
-          b(d.requireMfa) ? 1 : 0,
           b(d.requireOwnerApproval) ? 1 : 0,
           b(d.newDeviceAlerts) ? 1 : 0,
           auth.user.email,
         )
         .run();
       await audit(auth.user.email, "save", "security_settings", "1", {
-        requireMfa: b(d.requireMfa),
-        requireOwnerApproval: b(d.requireOwnerApproval),
+          requireOwnerApproval: b(d.requireOwnerApproval),
         newDeviceAlerts: b(d.newDeviceAlerts),
       });
     } else if (action === "approvalDecision") {

@@ -114,7 +114,7 @@ export async function POST(request: Request) {
       );
     await db
       .prepare(
-        "INSERT INTO shopping_lists(id,owner_token,name,items_json) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE name=IF(owner_token=VALUES(owner_token),VALUES(name),name),items_json=IF(owner_token=VALUES(owner_token),VALUES(items_json),items_json),updated_at=IF(owner_token=VALUES(owner_token),CURRENT_TIMESTAMP,updated_at)",
+        "INSERT INTO shopping_lists(id,owner_token,name,items_json) VALUES(?,?,?,?) ON CONFLICT (id) DO UPDATE SET name=CASE WHEN shopping_lists.owner_token=EXCLUDED.owner_token THEN EXCLUDED.name ELSE shopping_lists.name END,items_json=CASE WHEN shopping_lists.owner_token=EXCLUDED.owner_token THEN EXCLUDED.items_json ELSE shopping_lists.items_json END,updated_at=CASE WHEN shopping_lists.owner_token=EXCLUDED.owner_token THEN CURRENT_TIMESTAMP ELSE shopping_lists.updated_at END",
       )
       .bind(id, ownerToken, name, items)
       .run();
